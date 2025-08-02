@@ -7,5 +7,9 @@
       "Bash(npx shadcn@latest add:*)"
     ],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "shadcn-ui"
+  ],
+  "enableAllProjectMcpServers": true
 }
