@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Sensor, SensorStatus, Datastream } from '@/types/bgs-sensor';
+import { Sensor, Datastream } from '@/types/bgs-sensor';
 import { getEnhancedSensors, EnhancedSensor, getSensorDatastreams } from '@/lib/bgs-api';
 import { 
   Search, 
@@ -47,6 +47,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedMeasurement, setSelectedMeasurement] = useState<string>('all');
   const [expandedDatastreams, setExpandedDatastreams] = useState<Set<number>>(new Set());
   const [sensorDatastreams, setSensorDatastreams] = useState<Record<number, Datastream[]>>({});
   const [loadingDatastreams, setLoadingDatastreams] = useState<Set<number>>(new Set());
@@ -74,6 +75,40 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
     fetchSensors();
   }, []);
 
+  // Function to extract core measurement type from datastream name
+  const extractMeasurementType = (datastreamName: string): string => {
+    // Common measurement types to look for
+    const measurementTypes = [
+      'Water Temperature', 'Air Temperature', 'Temperature',
+      'Salinity', 'Conductivity', 'TDS', 'pH',
+      'Pressure', 'Humidity', 'Wind Speed', 'Wind Direction',
+      'Precipitation', 'Solar Radiation', 'Turbidity',
+      'Dissolved Oxygen', 'Chlorophyll', 'Nitrate',
+      'Phosphate', 'Alkalinity', 'Hardness',
+      'Flow Rate', 'Water Level', 'Battery Voltage',
+      'Barometric Pressure', 'Relative Humidity'
+    ];
+
+    const lowerName = datastreamName.toLowerCase();
+    
+    // Find the measurement type that matches
+    for (const type of measurementTypes) {
+      if (lowerName.includes(type.toLowerCase())) {
+        return type;
+      }
+    }
+    
+    // If no specific type found, try to extract a general category
+    if (lowerName.includes('temp')) return 'Temperature';
+    if (lowerName.includes('conduct')) return 'Conductivity';
+    if (lowerName.includes('salin')) return 'Salinity';
+    if (lowerName.includes('humid')) return 'Humidity';
+    if (lowerName.includes('pressure')) return 'Pressure';
+    if (lowerName.includes('wind')) return 'Wind';
+    
+    return 'Other';
+  };
+
   // Filter and sort sensors
   const filteredAndSortedSensors = useMemo(() => {
     let filtered = sensors.filter(sensor => {
@@ -81,8 +116,12 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
                            sensor.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            sensor.location_name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = selectedType === 'all' || sensor.type === selectedType;
+      const matchesMeasurement = selectedMeasurement === 'all' || 
+                                sensor.measurement_capabilities.some(capability => 
+                                  extractMeasurementType(capability) === selectedMeasurement
+                                );
       
-      return matchesSearch && matchesType;
+      return matchesSearch && matchesType && matchesMeasurement;
     });
 
     // Sort sensors
@@ -116,12 +155,12 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
     });
 
     return filtered;
-  }, [sensors, searchTerm, selectedType, sortField, sortDirection]);
+  }, [sensors, searchTerm, selectedType, selectedMeasurement, sortField, sortDirection]);
 
   // Handle sorting
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
       setSortDirection('asc');
@@ -130,26 +169,27 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
 
   // Get sort icon
   const getSortIcon = (field: SortField) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4" />;
-    }
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4" />;
     return sortDirection === 'asc' ? 
       <ArrowUp className="h-4 w-4" /> : 
       <ArrowDown className="h-4 w-4" />;
   };
 
   const toggleDatastreams = async (sensorId: number) => {
-    const newExpanded = new Set(expandedDatastreams);
-    if (newExpanded.has(sensorId)) {
-      newExpanded.delete(sensorId);
+    const isCurrentlyExpanded = expandedDatastreams.has(sensorId);
+    
+    if (isCurrentlyExpanded) {
+      setExpandedDatastreams(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(sensorId);
+        return newSet;
+      });
     } else {
-      newExpanded.add(sensorId);
+      setExpandedDatastreams(prev => new Set(prev).add(sensorId));
       
       // Fetch datastreams if we don't have them yet
       if (!sensorDatastreams[sensorId]) {
-        const newLoading = new Set(loadingDatastreams);
-        newLoading.add(sensorId);
-        setLoadingDatastreams(newLoading);
+        setLoadingDatastreams(prev => new Set(prev).add(sensorId));
         
         try {
           const response = await getSensorDatastreams(sensorId);
@@ -162,19 +202,30 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
         } catch (error) {
           console.error('Failed to fetch datastreams:', error);
         } finally {
-          const finalLoading = new Set(loadingDatastreams);
-          finalLoading.delete(sensorId);
-          setLoadingDatastreams(finalLoading);
+          setLoadingDatastreams(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(sensorId);
+            return newSet;
+          });
         }
       }
     }
-    setExpandedDatastreams(newExpanded);
   };
 
   // Get unique types for filter
   const sensorTypes = useMemo(() => {
     const uniqueTypes = [...new Set(sensors.map(sensor => sensor.type))];
     return uniqueTypes;
+  }, [sensors]);
+
+  // Get unique measurement types for filter
+  const measurementTypes = useMemo(() => {
+    const allCapabilities = sensors.flatMap(sensor => sensor.measurement_capabilities);
+    const extractedTypes = allCapabilities
+      .filter(Boolean)
+      .map(name => extractMeasurementType(name));
+    const uniqueMeasurementTypes = [...new Set(extractedTypes)].sort();
+    return uniqueMeasurementTypes;
   }, [sensors]);
 
 
@@ -242,6 +293,20 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 {sensorTypes.map(type => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={selectedMeasurement} onValueChange={setSelectedMeasurement}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Measurement Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {measurementTypes.map(type => (
                   <SelectItem key={type} value={type}>
                     {type}
                   </SelectItem>
@@ -395,13 +460,17 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
           <span>
             Showing {filteredAndSortedSensors.length} of {sensors.length} sensors
           </span>
-          {searchTerm && (
+          {(searchTerm || selectedType !== 'all' || selectedMeasurement !== 'all') && (
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => setSearchTerm('')}
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedType('all');
+                setSelectedMeasurement('all');
+              }}
             >
-              Clear search
+              Clear filters
             </Button>
           )}
         </div>

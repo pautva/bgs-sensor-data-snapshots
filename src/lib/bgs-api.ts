@@ -74,7 +74,7 @@ export async function listSensors(): Promise<BGSApiResponse<ListSensorsResponse>
         const datastreams = datastreamResponse.value || [];
         datastreamCount = datastreams.length;
         measurementCapabilities = datastreams.map((ds: any) => 
-          ds.unitOfMeasurement?.name || ds.name || 'Unknown'
+          ds.name || 'Unknown'
         );
         
         // Debug logging for specific sensor

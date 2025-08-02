@@ -47,11 +47,20 @@ This is a minimal, professional BGS Sensor Network Dashboard built with Next.js 
 ```
 src/
 ├── components/
-│   ├── ui/              # shadcn/ui base components (Button, Card, Table, Select, etc.)
+│   ├── ui/              # shadcn/ui base components
+│   │   ├── button.tsx       # Button component
+│   │   ├── card.tsx         # Card component
+│   │   ├── table.tsx        # Table components
+│   │   ├── select.tsx       # Select dropdown component
+│   │   ├── input.tsx        # Input component
+│   │   ├── badge.tsx        # Badge component
+│   │   ├── sheet.tsx        # Sheet/sidebar component
+│   │   └── dialog.tsx       # Dialog component (for sheet)
 │   └── dashboard/       # Dashboard components
-│       ├── BGSDashboard.tsx      # Main dashboard layout (simplified)
-│       ├── SensorTable.tsx       # Primary sensor overview table
-│       └── SensorDetailModal.tsx # Detailed sensor information
+│       ├── BGSDashboard.tsx      # Main dashboard layout
+│       ├── SensorTable.tsx       # Primary sensor table with filtering
+│       ├── SensorDetailSheet.tsx # Right-side sheet for sensor details
+│       └── SummaryCards.tsx      # Overview metrics cards
 ├── hooks/
 │   └── useSensorData.ts     # Real-time sensor data fetching
 ├── lib/
@@ -75,12 +84,15 @@ src/
 - **Real-time Updates** - Automatic data refresh with configurable intervals
 
 ### Current Implementation
-1. **Sensor Network Overview Table** - Primary feature showing all sensors
-2. **Expandable Datastreams** - Click arrows to view detailed datastream information
-3. **Search & Filter** - Search by name/description, filter by sensor type
-4. **Real-time Connection Status** - Header shows connection state and last update
-5. **Minimal Header & Footer** - Clean, professional layout
-6. **Modal Details** - Click dashboard icon to view sensor details
+1. **Summary Cards** - Key metrics overview (sensors, locations, sites, datastreams)
+2. **Sensor Network Table** - Primary feature showing all sensors with:
+   - **Click-to-expand rows** - Click entire row to view datastreams
+   - **Advanced Filtering** - Search, sensor type, and measurement type filters
+   - **Smart measurement extraction** - Filters by core types (Temperature, Conductivity, etc.)
+   - **Sortable columns** - Sort by name or datastream count
+3. **Right-side Sheet** - Click "Explore" to open sensor details in half-screen sidebar
+4. **Real-time Updates** - Live connection status and automatic data refresh
+5. **Minimal Design** - Clean, professional shadcn/ui stone theme
 
 ## Data Structure
 
@@ -89,7 +101,7 @@ src/
 - **Sensor Name** - BGS sensor identifier (e.g., "BGS GGERFS Barometer")
 - **Description** - Detailed sensor information
 - **Datastreams** - Count of available data measurements (expandable to show details)
-- **Dashboard** - View detailed sensor information
+- **Explore** - View detailed sensor information in right-side sheet
 
 ### BGS Sites & Data
 - **4 Major Sites** with 200+ sensor locations
@@ -117,8 +129,43 @@ src/
 
 ## Styling Guidelines
 
-- **Always use shadcn/ui components** - Button, Card, Table, Select, Input, Badge
+- **Always use shadcn/ui components** - Button, Card, Table, Select, Input, Badge, Sheet
 - **Standard Tailwind classes only** - No custom CSS variables
 - **Stone theme colors** - Consistent with shadcn/ui stone theme
 - **Minimal approach** - Professional, clean, easy to maintain
 - **No BGS-specific styling** - Use standard design tokens only
+
+## Key Features Implemented
+
+### **Summary Cards**
+- Live metrics: Total sensors, locations, active sites, total datastreams
+- Responsive grid layout (2 cols mobile, 4 cols desktop)
+- Loading states with skeleton animations
+
+### **Advanced Sensor Filtering**
+- **Text Search** - Search sensor names, descriptions, locations
+- **Sensor Type Filter** - Filter by Groundwater Logger, Weather Station, etc.
+- **Measurement Type Filter** - Smart extraction of core measurement types:
+  - Temperature, Conductivity, Salinity, TDS, pH, Pressure, Humidity
+  - Wind Speed, Wind Direction, Dissolved Oxygen, etc.
+- **Combined Filtering** - All filters work together
+- **Clear Filters** - One-click reset of all filters
+
+### **Interactive Table**
+- **Click-to-expand** - Click entire row to view sensor datastreams
+- **Sortable columns** - Sort by sensor name or datastream count
+- **Responsive design** - Mobile-friendly with proper touch targets
+- **Visual feedback** - Hover states and cursor indicators
+
+### **Right-side Detail Sheet**
+- **Half-screen width** - Non-blocking sidebar view
+- **Comprehensive details** - Sensor overview, datastreams, recent observations
+- **Metadata access** - Direct link to BGS metadata in header
+- **Clickable datastreams** - Select to view recent observations
+- **Smooth animations** - Slides in from right with overlay
+
+### **Performance Optimizations**
+- **No API limits** - Fetches all available sensors (removed $top=100)
+- **Smart caching** - Intelligent datastream caching to avoid repeated calls
+- **Memoized calculations** - Efficient filtering and sorting
+- **Loading states** - Proper loading indicators throughout
