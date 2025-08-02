@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Toggle } from '@/components/ui/toggle';
 import { Datastream, Observation } from '@/types/bgs-sensor';
-import { formatSensorValue } from '@/lib/bgs-api';
 import { TrendingUp, BarChart3 } from 'lucide-react';
 
 interface DatastreamChartProps {
@@ -30,10 +29,11 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
     () => new Set(datastreams.map(ds => ds.datastream_id))
   );
 
-  // Update visible datastreams when datastreams prop changes
+  // Update visible datastreams only when datastream IDs actually change
   useEffect(() => {
-    setVisibleDatastreams(new Set(datastreams.map(ds => ds.datastream_id)));
-  }, [datastreams]);
+    const currentIds = new Set(datastreams.map(ds => ds.datastream_id));
+    setVisibleDatastreams(currentIds);
+  }, [datastreams.map(ds => ds.datastream_id).join(',')]);
 
   const toggleDatastreamVisibility = (datastreamId: number) => {
     setVisibleDatastreams(prev => {
@@ -49,7 +49,6 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
   
   // Theme-aware colors for light and dark mode
   const axisColor = '#94a3b8'; // slate-400 - works well in both themes
-  const gridColor = '#e2e8f0'; // slate-200 - light theme grid
   const textColor = '#64748b'; // slate-500 - readable in both themes
   const chartData = useMemo(() => {
     if (!datastreams.length || !Object.keys(observations).length) return [];
@@ -171,9 +170,12 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
     );
   }
 
+  // Check if this is being used in a full-height context
+  const isFullHeight = className?.includes('h-full');
+
   return (
-    <Card className={className}>
-      <CardHeader>
+    <Card className={`${isFullHeight ? 'flex flex-col' : ''} ${className || ""}`}>
+      <CardHeader className={isFullHeight ? "flex-shrink-0" : ""}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
@@ -198,8 +200,8 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
           {isNormalised && ' (Normalised to 0-1 scale for comparison)'}
         </p>
       </CardHeader>
-      <CardContent>
-        <div className="h-[300px] w-full">
+      <CardContent className={isFullHeight ? 'flex-1 flex flex-col' : ''}>
+        <div className={`w-full ${isFullHeight ? 'flex-1 min-h-[300px]' : 'h-[300px]'}`}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={axisColor} strokeOpacity={0.5} />

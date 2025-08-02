@@ -8,6 +8,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Sensor } from '@/types/bgs-sensor';
 import { useRealTimeData } from '@/hooks/useSensorData';
+import { useProgressiveSensorData } from '@/hooks/useProgressiveSensorData';
 import { 
   RefreshCw, 
   AlertTriangle,
@@ -20,16 +21,29 @@ export default function BGSDashboard() {
   const [selectedSensor, setSelectedSensor] = useState<Sensor | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  // Use progressive loading for sensors to get datastream counts
   const {
     sensors,
+    isLoadingBasic,
+    isLoadingCounts,
+    isComplete,
+    error: sensorError,
+    refetch: refetchSensors
+  } = useProgressiveSensorData();
+
+  // Still use the original hook for locations and stats
+  const {
     locations,
     stats,
-    isLoading,
+    isLoading: isLoadingOther,
     hasError,
     errors,
     lastUpdated,
     refetchAll
   } = useRealTimeData();
+
+  // Combine loading states
+  const isLoading = isLoadingBasic || isLoadingOther;
 
   const handleSensorSelect = (sensor: Sensor) => {
     setSelectedSensor(sensor);
@@ -145,7 +159,8 @@ export default function BGSDashboard() {
             totalLocations={totalLocations}
             activeSites={activeSites}
             totalDatastreams={totalDatastreams}
-            isLoading={isLoading}
+            isLoading={isLoadingBasic}
+            isLoadingDatastreams={isLoadingCounts}
           />
 
           {/* Primary Tool - Sensor Network Overview (Full Width) */}

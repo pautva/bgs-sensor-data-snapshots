@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Sensor, Datastream } from '@/types/bgs-sensor';
 import { getEnhancedSensors, EnhancedSensor, getSensorDatastreams } from '@/lib/bgs-api';
+import { useProgressiveSensorData } from '@/hooks/useProgressiveSensorData';
 import { 
   Search, 
   ArrowUpDown, 
@@ -40,6 +41,14 @@ type SortField = 'name' | 'datastreams';
 type SortDirection = 'asc' | 'desc';
 
 export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
+  // Use progressive loading for sensor data
+  const {
+    sensors: basicSensors,
+    isLoadingBasic,
+    isLoadingCounts,
+    error: progressiveError
+  } = useProgressiveSensorData();
+  
   const [sensors, setSensors] = useState<EnhancedSensor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,62 +61,84 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
   const [sensorDatastreams, setSensorDatastreams] = useState<Record<number, Datastream[]>>({});
   const [loadingDatastreams, setLoadingDatastreams] = useState<Set<number>>(new Set());
 
-  // Fetch enhanced sensors data
+  // Transform progressive sensor data to enhanced sensors
   useEffect(() => {
-    const fetchSensors = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getEnhancedSensors();
-        
-        if (response.success) {
-          setSensors(response.data.sensors);
-          setError(null);
-        } else {
-          setError(response.error || 'Failed to load sensors');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSensors();
-  }, []);
-
-  // Function to extract core measurement type from datastream name
-  const extractMeasurementType = (datastreamName: string): string => {
-    // Common measurement types to look for
-    const measurementTypes = [
-      'Water Temperature', 'Air Temperature', 'Temperature',
-      'Salinity', 'Conductivity', 'TDS', 'pH',
-      'Pressure', 'Humidity', 'Wind Speed', 'Wind Direction',
-      'Precipitation', 'Solar Radiation', 'Turbidity',
-      'Dissolved Oxygen', 'Chlorophyll', 'Nitrate',
-      'Phosphate', 'Alkalinity', 'Hardness',
-      'Flow Rate', 'Water Level', 'Battery Voltage',
-      'Barometric Pressure', 'Relative Humidity'
-    ];
-
-    const lowerName = datastreamName.toLowerCase();
-    
-    // Find the measurement type that matches
-    for (const type of measurementTypes) {
-      if (lowerName.includes(type.toLowerCase())) {
-        return type;
-      }
+    if (progressiveError) {
+      setError(progressiveError);
+      setIsLoading(false);
+      return;
     }
-    
-    // If no specific type found, try to extract a general category
-    if (lowerName.includes('temp')) return 'Temperature';
-    if (lowerName.includes('conduct')) return 'Conductivity';
-    if (lowerName.includes('salin')) return 'Salinity';
-    if (lowerName.includes('humid')) return 'Humidity';
-    if (lowerName.includes('pressure')) return 'Pressure';
-    if (lowerName.includes('wind')) return 'Wind';
-    
-    return 'Other';
+
+    if (basicSensors.length > 0) {
+      // Transform basic sensors to enhanced format
+      const enhancedSensors: EnhancedSensor[] = basicSensors.map((sensor) => {
+        // Determine sensor type from name/category
+        let type = 'Groundwater Logger';
+        const sensorName = sensor.name.toLowerCase();
+        if (sensorName.includes('weather')) type = 'Weather Station';
+        else if (sensorName.includes('gas')) type = 'Gas Monitor';
+        else if (sensorName.includes('atmospheric')) type = 'Atmospheric Monitor';
+        else if (sensorName.includes('barometer')) type = 'Barometer';
+        else if (sensorName.includes('dts')) type = 'DTS Logger';
+        else if (sensorName.includes('dtc')) type = 'DTC Logger';
+
+        // Create measurements list from name-based inference for filtering
+        const measurements = inferMeasurementsFromSensorName(sensor.name, sensor.description);
+
+        // Determine status
+        const status: 'Active' | 'Inactive' | 'Maintenance' = 
+          sensor.published && sensor.total_datastreams > 0 ? 'Active' : 'Inactive';
+
+        return {
+          ...sensor,
+          type,
+          location_name: sensor.deployment_locations[0] || 'Unknown Location',
+          measurements,
+          status
+        };
+      });
+
+      setSensors(enhancedSensors);
+      setError(null);
+      setIsLoading(isLoadingBasic);
+    }
+  }, [basicSensors, isLoadingBasic, progressiveError]);
+
+  // Infer likely measurements from sensor name and description (for filtering)
+  const inferMeasurementsFromSensorName = (name: string, description: string): string[] => {
+    const text = `${name} ${description}`.toLowerCase();
+    const measurements: string[] = [];
+
+    // Common measurement patterns based on sensor names
+    if (text.includes('temp')) measurements.push('Temperature');
+    if (text.includes('conduct')) measurements.push('Conductivity');
+    if (text.includes('salin')) measurements.push('Salinity');
+    if (text.includes('pressure') || text.includes('barom')) measurements.push('Pressure');
+    if (text.includes('humid')) measurements.push('Humidity');
+    if (text.includes('wind')) measurements.push('Wind Speed', 'Wind Direction');
+    if (text.includes('water') && text.includes('level')) measurements.push('Water Level');
+    if (text.includes('ph')) measurements.push('pH');
+    if (text.includes('dissolv') && text.includes('oxygen')) measurements.push('Dissolved Oxygen');
+    if (text.includes('tds')) measurements.push('TDS');
+    if (text.includes('turb')) measurements.push('Turbidity');
+    if (text.includes('gas') || text.includes('co2') || text.includes('methane')) {
+      measurements.push('Carbon Dioxide', 'Methane', 'Oxygen');
+    }
+    if (text.includes('weather')) {
+      measurements.push('Temperature', 'Humidity', 'Pressure', 'Wind Speed');
+    }
+    if (text.includes('groundwater') || text.includes('logger')) {
+      measurements.push('Temperature', 'Conductivity', 'Water Level');
+    }
+
+    // Default fallback if no specific measurements detected
+    if (measurements.length === 0) {
+      measurements.push('Temperature', 'Pressure');
+    }
+
+    return measurements;
   };
+
 
   // Filter and sort sensors
   const filteredAndSortedSensors = useMemo(() => {
@@ -117,9 +148,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
                            sensor.location_name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = selectedType === 'all' || sensor.type === selectedType;
       const matchesMeasurement = selectedMeasurement === 'all' || 
-                                sensor.measurement_capabilities.some(capability => 
-                                  extractMeasurementType(capability) === selectedMeasurement
-                                );
+                                sensor.measurements.includes(selectedMeasurement);
       
       return matchesSearch && matchesType && matchesMeasurement;
     });
@@ -220,11 +249,8 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
 
   // Get unique measurement types for filter
   const measurementTypes = useMemo(() => {
-    const allCapabilities = sensors.flatMap(sensor => sensor.measurement_capabilities);
-    const extractedTypes = allCapabilities
-      .filter(Boolean)
-      .map(name => extractMeasurementType(name));
-    const uniqueMeasurementTypes = [...new Set(extractedTypes)].sort();
+    const allMeasurements = sensors.flatMap(sensor => sensor.measurements);
+    const uniqueMeasurementTypes = [...new Set(allMeasurements)].sort();
     return uniqueMeasurementTypes;
   }, [sensors]);
 
@@ -373,7 +399,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="text-sm">
-                          {sensor.total_datastreams}
+                          {isLoadingCounts && sensor.total_datastreams === 0 ? '...' : sensor.total_datastreams}
                         </Badge>
                         {expandedDatastreams.has(sensor.id) ? 
                           <ArrowUp className="h-4 w-4 text-muted-foreground" /> : 

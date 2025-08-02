@@ -14,13 +14,15 @@ import { Button } from "@/components/ui/button";
 import { DatastreamChart } from "./DatastreamChart";
 import { DatastreamSummary } from "./DatastreamSummary";
 import { Sensor, Datastream, Observation, ObservationQuality, Location } from "@/types/bgs-sensor";
+import Link from "next/link";
 import {
   getSensorDatastreams,
   getDatastreamObservations,
-  getSensorStatusColor,
   formatSensorValue,
   listLocations,
 } from "@/lib/bgs-api";
+import { extractObservationDateRange } from "@/lib/date-utils";
+import { findMatchingLocation } from "@/lib/location-utils";
 import {
   Activity,
   MapPin,
@@ -29,6 +31,7 @@ import {
   Database,
   ExternalLink,
   Loader2,
+  Maximize2,
 } from "lucide-react";
 
 interface SensorDetailSheetProps {
@@ -51,10 +54,10 @@ export function SensorDetailSheet({
   >({});
   const [sensorLocation, setSensorLocation] = useState<Location | null>(null);
   const [observationStartDate, setObservationStartDate] = useState<string | null>(null);
+  const [observationEndDate, setObservationEndDate] = useState<string | null>(null);
   const [isLoadingDatastreams, setIsLoadingDatastreams] = useState(false);
   const [isLoadingObservations, setIsLoadingObservations] = useState(false);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch datastreams and location when sensor changes
@@ -66,6 +69,7 @@ export function SensorDetailSheet({
       setChartObservations({});
       setSensorLocation(null);
       setObservationStartDate(null);
+      setObservationEndDate(null);
       return;
     }
 
@@ -89,23 +93,17 @@ export function SensorDetailSheet({
 
     const fetchLocation = async () => {
       try {
-        setIsLoadingLocation(true);
         const locationsResponse = await listLocations();
         
         if (locationsResponse.success && sensor.deployment_locations.length > 0) {
-          // Find location that matches the sensor's deployment location
-          const matchingLocation = locationsResponse.data.locations.find(loc => 
-            sensor.deployment_locations.some(deploc => 
-              deploc.toLowerCase().includes(loc.name.toLowerCase()) ||
-              loc.name.toLowerCase().includes(deploc.toLowerCase())
-            )
+          const matchingLocation = findMatchingLocation(
+            sensor.deployment_locations, 
+            locationsResponse.data.locations
           );
-          setSensorLocation(matchingLocation || null);
+          setSensorLocation(matchingLocation);
         }
       } catch (err) {
         console.error("Error fetching location:", err);
-      } finally {
-        setIsLoadingLocation(false);
       }
     };
 
@@ -145,23 +143,10 @@ export function SensorDetailSheet({
 
         setChartObservations(chartData);
 
-        // Find the earliest observation date across all datastreams
-        let earliestDate: string | null = null;
-        results.forEach(({ observations }) => {
-          if (observations.length > 0) {
-            // Get the oldest observation (they're ordered by phenomenonTime desc, so take the last one)
-            const oldestInThisDatastream = observations[observations.length - 1];
-            if (!earliestDate || oldestInThisDatastream.phenomenon_time < earliestDate) {
-              earliestDate = oldestInThisDatastream.phenomenon_time;
-            }
-          }
-        });
-
-        if (earliestDate) {
-          // Format the date to YYYY-MM-DD
-          const formattedDate = new Date(earliestDate).toISOString().split('T')[0];
-          setObservationStartDate(formattedDate);
-        }
+        // Extract date range from observations
+        const { startDate, endDate } = extractObservationDateRange(chartData);
+        setObservationStartDate(startDate);
+        setObservationEndDate(endDate);
       } catch (err) {
         console.error("Error fetching chart data:", err);
       } finally {
@@ -219,23 +204,39 @@ export function SensorDetailSheet({
       <SheetContent className="overflow-y-auto">
         <SheetHeader className="pb-6 pr-12">
           <div className="flex items-center justify-between">
-            <SheetTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              {sensor.name}
-            </SheetTitle>
-            {sensor.metadata_url && (
-              <Button variant="outline" size="sm" asChild>
-                <a
-                  href={sensor.metadata_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  <span>View Metadata</span>
-                </a>
-              </Button>
-            )}
+            <div className="flex items-center gap-3">
+              <SheetTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                {sensor.name}
+              </SheetTitle>
+              {observationStartDate && observationEndDate && (
+                <Badge variant="secondary" className="text-xs">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {observationStartDate} to {observationEndDate}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Link href={`/sensor/${sensor.id}`}>
+                <Button variant="outline" size="sm" className="flex items-center gap-2 hover:cursor-pointer">
+                  <Maximize2 className="h-4 w-4" />
+                  <span>Full View</span>
+                </Button>
+              </Link>
+              {sensor.metadata_url && (
+                <Button variant="outline" size="sm" asChild>
+                  <a
+                    href={sensor.metadata_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    <span>View Metadata</span>
+                  </a>
+                </Button>
+              )}
+            </div>
           </div>
           <SheetDescription>
             Detailed sensor information and datastreams
@@ -253,9 +254,6 @@ export function SensorDetailSheet({
                   <Badge variant="outline" className="text-xs">
                     Borehole Reference: {sensor.name.match(/[A-Z]{2,3}\d{2,3}/)?.[0] || 'N/A'}
                   </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    Start Date: {observationStartDate || '2021-09-01'}
-                  </Badge>
                   <Badge variant="secondary">
                     {sensor.total_datastreams} datastreams
                   </Badge>
@@ -270,8 +268,8 @@ export function SensorDetailSheet({
                 <p className="text-sm">{sensor.description}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-3">
+              <div className="grid grid-cols-4 gap-6">
+                <div className="col-span-2 space-y-3">
                   <div>
                     <h4 className="font-medium text-sm text-muted-foreground mb-1">
                       Category
@@ -320,17 +318,36 @@ export function SensorDetailSheet({
                 <div className="space-y-3">
                   <div>
                     <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                      Sensor ID
+                    </h4>
+                    <span className="text-sm font-mono">{sensor.id}</span>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-1">
                       Status
                     </h4>
                     <Badge variant="outline">
                       {sensor.published ? "Published" : "Draft"}
                     </Badge>
                   </div>
+                </div>
+
+                <div className="space-y-3">
                   <div>
                     <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                      Sensor ID
+                      Start Date
                     </h4>
-                    <span className="text-sm font-mono">{sensor.id}</span>
+                    <Badge variant="outline">
+                      {observationStartDate || '2021-09-01'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                      Last Reading
+                    </h4>
+                    <Badge variant="outline">
+                      {observationEndDate || 'N/A'}
+                    </Badge>
                   </div>
                 </div>
               </div>

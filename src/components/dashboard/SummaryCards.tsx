@@ -14,6 +14,7 @@ interface SummaryCardsProps {
   activeSites: number;
   totalDatastreams: number;
   isLoading?: boolean;
+  isLoadingDatastreams?: boolean;
 }
 
 export function SummaryCards({ 
@@ -21,7 +22,8 @@ export function SummaryCards({
   totalLocations, 
   activeSites, 
   totalDatastreams,
-  isLoading = false 
+  isLoading = false,
+  isLoadingDatastreams = false 
 }: SummaryCardsProps) {
   if (isLoading) {
     return (
@@ -64,7 +66,7 @@ export function SummaryCards({
     },
     {
       title: 'Datastreams',
-      value: totalDatastreams.toLocaleString(),
+      value: isLoadingDatastreams ? '...' : totalDatastreams.toLocaleString(),
       icon: Activity,
       description: 'Live data feeds'
     }

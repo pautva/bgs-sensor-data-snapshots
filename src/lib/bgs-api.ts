@@ -42,13 +42,40 @@ export interface EnhancedSensor extends Sensor {
   status: 'Active' | 'Inactive' | 'Maintenance';
 }
 
+// Simple cache for API responses
+const apiCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+// Cache helper functions
+function getCachedData<T>(key: string): T | null {
+  const cached = apiCache.get(key);
+  if (cached && Date.now() - cached.timestamp < cached.ttl) {
+    return cached.data;
+  }
+  apiCache.delete(key);
+  return null;
+}
+
+function setCachedData<T>(key: string, data: T, ttlMs: number = 60000): void {
+  apiCache.set(key, {
+    data,
+    timestamp: Date.now(),
+    ttl: ttlMs
+  });
+}
+
 // BGS API Functions
 export async function listSensors(): Promise<BGSApiResponse<ListSensorsResponse>> {
+  const cacheKey = 'sensors_basic';
+  const cached = getCachedData<ListSensorsResponse>(cacheKey);
+  if (cached) {
+    return { success: true, data: cached };
+  }
+
   try {
-    // First, fetch Things (sensors) without datastreams to get basic info
+    // Fetch basic sensor info only - no datastream counts for speed
     const response = await frostApiCall('/Things?$expand=Locations');
     
-    const sensors: Sensor[] = await Promise.all(response.value.map(async (thing: any, index: number) => {
+    const sensors: Sensor[] = response.value.map((thing: any, index: number) => {
       // Extract location information
       const location = thing.Locations?.[0];
       const locationName = location ? 
@@ -65,30 +92,6 @@ export async function listSensors(): Promise<BGSApiResponse<ListSensorsResponse>
       else if (nameDesc.includes('dtc')) category = 'DTC Monitoring';
       else if (nameDesc.includes('barometer')) category = 'Barometer';
       
-      // Get accurate datastream count using the same endpoint as the expanded view
-      let datastreamCount = 0;
-      let measurementCapabilities: string[] = [];
-      
-      try {
-        const datastreamResponse = await frostApiCall(`/Things(${thing['@iot.id']})/Datastreams`);
-        const datastreams = datastreamResponse.value || [];
-        datastreamCount = datastreams.length;
-        measurementCapabilities = datastreams.map((ds: any) => 
-          ds.name || 'Unknown'
-        );
-        
-        // Debug logging for specific sensor
-        if (thing.name && thing.name.includes('Barometer')) {
-          console.log(`DEBUG: ${thing.name} - Datastreams from direct call:`, datastreams.map((ds: any) => ({
-            id: ds['@iot.id'],
-            name: ds.name,
-            description: ds.description
-          })));
-        }
-      } catch (error) {
-        console.error(`Failed to fetch datastreams for sensor ${thing['@iot.id']}:`, error);
-      }
-      
       return {
         id: parseInt(thing['@iot.id']) || index + 1,
         name: thing.name || `Sensor ${index + 1}`,
@@ -96,18 +99,22 @@ export async function listSensors(): Promise<BGSApiResponse<ListSensorsResponse>
         category,
         metadata_url: thing['@iot.selfLink'] || '',
         published: true,
-        measurement_capabilities: measurementCapabilities,
-        total_datastreams: datastreamCount,
+        measurement_capabilities: [], // Will be populated on-demand
+        total_datastreams: 0, // Will be populated on-demand
         deployment_locations: location ? [locationName] : []
       };
-    }));
+    });
+    
+    const result = {
+      sensors,
+      total_count: sensors.length
+    };
+    
+    setCachedData(cacheKey, result, 300000); // Cache for 5 minutes
     
     return {
       success: true,
-      data: {
-        sensors,
-        total_count: sensors.length
-      }
+      data: result
     };
   } catch (error) {
     console.error('Error fetching sensors from FROST API:', error);
@@ -120,6 +127,12 @@ export async function listSensors(): Promise<BGSApiResponse<ListSensorsResponse>
 }
 
 export async function listLocations(): Promise<BGSApiResponse<ListLocationsResponse>> {
+  const cacheKey = 'locations';
+  const cached = getCachedData<ListLocationsResponse>(cacheKey);
+  if (cached) {
+    return { success: true, data: cached };
+  }
+
   try {
     // Fetch Locations from FROST API
     const response = await frostApiCall('/Locations');
@@ -161,12 +174,16 @@ export async function listLocations(): Promise<BGSApiResponse<ListLocationsRespo
       };
     });
     
+    const result = {
+      locations,
+      total_count: locations.length
+    };
+    
+    setCachedData(cacheKey, result, 300000); // Cache for 5 minutes
+    
     return {
       success: true,
-      data: {
-        locations,
-        total_count: locations.length
-      }
+      data: result
     };
   } catch (error) {
     console.error('Error fetching locations from FROST API:', error);
@@ -179,16 +196,15 @@ export async function listLocations(): Promise<BGSApiResponse<ListLocationsRespo
 }
 
 export async function getSensorDatastreams(sensorId: number): Promise<BGSApiResponse<GetDatastreamsResponse>> {
+  const cacheKey = `datastreams_${sensorId}`;
+  const cached = getCachedData<GetDatastreamsResponse>(cacheKey);
+  if (cached) {
+    return { success: true, data: cached };
+  }
+
   try {
     // Fetch datastreams for a specific Thing (sensor) from FROST API
     const response = await frostApiCall(`/Things(${sensorId})/Datastreams`);
-    
-    // Debug logging
-    console.log(`DEBUG: Direct datastreams fetch for sensor ${sensorId}:`, response.value.map((ds: any) => ({
-      id: ds['@iot.id'],
-      name: ds.name,
-      description: ds.description
-    })));
     
     const datastreams: Datastream[] = response.value.map((ds: any) => ({
       datastream_id: parseInt(ds['@iot.id']) || 0,
@@ -199,12 +215,16 @@ export async function getSensorDatastreams(sensorId: number): Promise<BGSApiResp
       observation_type: ds.observationType || 'Measurement'
     }));
     
+    const result = {
+      datastreams,
+      sensor_id: sensorId
+    };
+    
+    setCachedData(cacheKey, result, 120000); // Cache for 2 minutes
+    
     return {
       success: true,
-      data: {
-        datastreams,
-        sensor_id: sensorId
-      }
+      data: result
     };
   } catch (error) {
     console.error('Error fetching datastreams from FROST API:', error);
@@ -220,6 +240,12 @@ export async function getDatastreamObservations(
   datastreamId: number,
   limit: number = 100
 ): Promise<BGSApiResponse<GetObservationsResponse>> {
+  const cacheKey = `observations_${datastreamId}_${limit}`;
+  const cached = getCachedData<GetObservationsResponse>(cacheKey);
+  if (cached) {
+    return { success: true, data: cached };
+  }
+
   try {
     // Fetch real observations from FROST API
     const response = await frostApiCall(
@@ -234,13 +260,17 @@ export async function getDatastreamObservations(
       result_quality: obs.resultQuality || "Unknown"
     }));
     
+    const result = {
+      observations,
+      datastream_id: datastreamId,
+      total_count: observations.length
+    };
+    
+    setCachedData(cacheKey, result, 60000); // Cache for 1 minute
+    
     return {
       success: true,
-      data: {
-        observations,
-        datastream_id: datastreamId,
-        total_count: observations.length
-      }
+      data: result
     };
   } catch (error) {
     console.error(`Error fetching observations for datastream ${datastreamId}:`, error);
@@ -252,8 +282,72 @@ export async function getDatastreamObservations(
   }
 }
 
+// Fast function to get datastream count for a sensor (for table display)
+export async function getSensorDatastreamCount(sensorId: number): Promise<number> {
+  const cacheKey = `datastream_count_${sensorId}`;
+  const cached = getCachedData<number>(cacheKey);
+  if (cached !== null) {
+    return cached;
+  }
+
+  try {
+    const response = await frostApiCall(`/Things(${sensorId})/Datastreams?$count=true&$top=0`);
+    const count = response['@iot.count'] || 0;
+    setCachedData(cacheKey, count, 300000); // Cache for 5 minutes
+    return count;
+  } catch (error) {
+    console.error(`Error fetching datastream count for sensor ${sensorId}:`, error);
+    return 0;
+  }
+}
+
+// Batch function to get datastream counts for multiple sensors concurrently
+export async function getBatchDatastreamCounts(sensorIds: number[]): Promise<Record<number, number>> {
+  const counts: Record<number, number> = {};
+  
+  // Check cache first
+  const uncachedIds = sensorIds.filter(id => {
+    const cached = getCachedData<number>(`datastream_count_${id}`);
+    if (cached !== null) {
+      counts[id] = cached;
+      return false;
+    }
+    return true;
+  });
+
+  if (uncachedIds.length === 0) {
+    return counts;
+  }
+
+  // Fetch uncached counts concurrently (limit to 10 at a time to avoid overwhelming API)
+  const chunks = [];
+  for (let i = 0; i < uncachedIds.length; i += 10) {
+    chunks.push(uncachedIds.slice(i, i + 10));
+  }
+
+  for (const chunk of chunks) {
+    const promises = chunk.map(async (sensorId) => {
+      const count = await getSensorDatastreamCount(sensorId);
+      return { sensorId, count };
+    });
+
+    const results = await Promise.all(promises);
+    results.forEach(({ sensorId, count }) => {
+      counts[sensorId] = count;
+    });
+  }
+
+  return counts;
+}
+
 // Dashboard-specific utility functions
 export async function getDashboardStats(): Promise<BGSApiResponse<DashboardStats>> {
+  const cacheKey = 'dashboard_stats';
+  const cached = getCachedData<DashboardStats>(cacheKey);
+  if (cached) {
+    return { success: true, data: cached };
+  }
+
   try {
     const [sensorsResponse, locationsResponse] = await Promise.all([
       listSensors(),
@@ -321,6 +415,8 @@ export async function getDashboardStats(): Promise<BGSApiResponse<DashboardStats
       categories: categoryTotals,
       measurement_types: measurementTypes
     };
+    
+    setCachedData(cacheKey, dashboardStats, 300000); // Cache for 5 minutes
     
     return {
       success: true,

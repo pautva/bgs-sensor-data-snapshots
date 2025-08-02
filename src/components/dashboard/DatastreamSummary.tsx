@@ -118,19 +118,31 @@ export function DatastreamSummary({ datastreams, observations, className }: Data
     }
   };
 
+  // Determine optimal grid layout based on number of cards
+  const getGridColumns = (count: number) => {
+    if (count <= 2) return "grid-cols-1 md:grid-cols-2";
+    if (count <= 4) return "grid-cols-2";
+    return "grid-cols-2 lg:grid-cols-3";
+  };
+
+  const validDatastreams = datastreams.filter(datastream => {
+    const stats = streamStats[datastream.datastream_id];
+    return stats && stats.count > 0;
+  });
+
   return (
-    <Card className={className}>
-      <CardHeader className="pb-4">
+    <Card className={`flex flex-col ${className || ""}`}>
+      <CardHeader className="pb-4 flex-shrink-0">
         <CardTitle className="text-lg flex items-center gap-2">
           <BarChart3 className="h-4 w-4" />
           Data Summary
           <Badge variant="secondary" className="ml-auto">
-            {datastreams.length} streams
+            {validDatastreams.length} streams
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <CardContent className="flex-1 flex flex-col">
+        <div className={`grid ${getGridColumns(validDatastreams.length)} gap-3 h-full`}>
           {datastreams.map(datastream => {
             const stats = streamStats[datastream.datastream_id];
             if (!stats || stats.count === 0) return null;
@@ -140,7 +152,7 @@ export function DatastreamSummary({ datastreams, observations, className }: Data
             return (
               <div 
                 key={datastream.datastream_id}
-                className="p-3 border rounded-lg bg-muted/20 space-y-2"
+                className="p-3 border rounded-lg bg-muted/20 space-y-2 flex flex-col h-full"
               >
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-sm">{propertyName}</h4>
