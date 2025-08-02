@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a comprehensive BGS Sensor Network Dashboard built with Next.js 15.4.5, TypeScript, and shadcn/ui components. The dashboard provides real-time monitoring and analysis of BGS's environmental sensor network using data from the BGS FROST API.
+This is a minimal, professional BGS Sensor Network Dashboard built with Next.js 15.4.5, TypeScript, and shadcn/ui components using the stone theme. The dashboard provides real-time monitoring of BGS's environmental sensor network using data from the BGS FROST API.
 
 ## Commands
 
@@ -23,56 +23,50 @@ This is a comprehensive BGS Sensor Network Dashboard built with Next.js 15.4.5, 
 - **Tailwind CSS v4** with PostCSS integration
 
 ### Key Dependencies
+- `@radix-ui/react-select` - Accessible select component
 - `class-variance-authority` & `clsx` - For conditional CSS classes
 - `tailwind-merge` - Merges Tailwind classes efficiently
 - `lucide-react` - Icon library for UI elements
 - `tw-animate-css` - Animation utilities
 
-### BGS-Specific Features
+### Key Features
 - **Real-time Data Integration** - Direct connection to BGS FROST API (`https://sensors.bgs.ac.uk/FROST-Server/v1.1`)
-- **Sensor Network Monitoring** - Live sensor data across 4 major BGS sites
-- **Expandable Datastreams** - Interactive exploration of sensor capabilities
-- **Responsive Design** - Mobile-friendly interface with consistent touch targets
+- **Sensor Network Overview** - Main table showing all sensors with expandable datastreams
+- **Search & Filter** - Filter sensors by type and search by name/description
+- **Minimal UI** - Clean, professional interface using shadcn/ui stone theme
+- **No Limitations** - Fetches all available sensors (no artificial limits)
 
 ### Component Architecture
-- **shadcn/ui** configured with "new-york" style
+- **shadcn/ui** configured with stone theme
 - Components aliased to `@/components`, utils to `@/lib/utils`
 - Uses `cn()` utility function in `src/lib/utils.ts` for class merging
 - Path mapping configured for `@/*` pointing to `src/*`
+- **Minimal Design** - No custom CSS variables, only shadcn/ui styles
 
 ### Dashboard Components
 ```
 src/
 ├── components/
-│   ├── ui/              # shadcn/ui base components
-│   └── dashboard/       # BGS-specific dashboard components
-│       ├── BGSDashboard.tsx      # Main dashboard layout
-│       ├── StatsCards.tsx        # Real-time metrics cards
+│   ├── ui/              # shadcn/ui base components (Button, Card, Table, Select, etc.)
+│   └── dashboard/       # Dashboard components
+│       ├── BGSDashboard.tsx      # Main dashboard layout (simplified)
 │       ├── SensorTable.tsx       # Primary sensor overview table
-│       ├── SensorMap.tsx         # Location visualization
-│       ├── DataVisualization.tsx # Time-series charts
 │       └── SensorDetailModal.tsx # Detailed sensor information
 ├── hooks/
-│   ├── useSensorData.ts     # Real-time sensor data fetching
-│   └── useDatastreams.ts    # Datastream management
+│   └── useSensorData.ts     # Real-time sensor data fetching
 ├── lib/
 │   ├── bgs-api.ts          # BGS FROST API integration
-│   └── utils.ts            # Utility functions
+│   └── utils.ts            # Utility functions (cn helper)
 └── types/
     └── bgs-sensor.ts       # TypeScript interfaces for BGS data
 ```
 
 ### Styling System
-- **Tailwind CSS v4** with custom theme configuration
-- **BGS Design Tokens** - Custom CSS variables for sensor status and categories:
-  ```css
-  --sensor-active: hsl(142 76% 36%);
-  --sensor-inactive: hsl(0 84% 60%);
-  --groundwater-monitoring: hsl(220 70% 50%);
-  --weather-station: hsl(260 60% 50%);
-  ```
+- **Tailwind CSS v4** with shadcn/ui stone theme
+- **No Custom CSS Variables** - Uses only standard shadcn/ui color tokens
+- **Minimal Approach** - Standard Tailwind classes (text-green-600, text-blue-600, etc.)
 - Dark mode support with `.dark` class variant
-- Consistent spacing tokens (`--dashboard-padding`, `--card-gap`)
+- **Easy Maintenance** - No custom design tokens to maintain
 
 ### Data Integration
 - **BGS FROST API** - Real sensor data from `https://sensors.bgs.ac.uk/FROST-Server/v1.1`
@@ -80,13 +74,13 @@ src/
 - **Sites Covered** - UKGEOS Glasgow Observatory, BGS Cardiff, UKGEOS Cheshire Observatory, Wallingford
 - **Real-time Updates** - Automatic data refresh with configurable intervals
 
-### Key Features Implemented
-1. **Primary Sensor Table** - Full-width sortable table with sensor details
-2. **Expandable Datastreams** - Click to view detailed datastream information
-3. **Live Statistics** - Real-time metrics cards showing network health
-4. **Interactive Map** - Geographic visualization of sensor locations
-5. **Data Visualization** - Time-series charts for sensor measurements
-6. **Responsive Layout** - Mobile-optimized interface
+### Current Implementation
+1. **Sensor Network Overview Table** - Primary feature showing all sensors
+2. **Expandable Datastreams** - Click arrows to view detailed datastream information
+3. **Search & Filter** - Search by name/description, filter by sensor type
+4. **Real-time Connection Status** - Header shows connection state and last update
+5. **Minimal Header & Footer** - Clean, professional layout
+6. **Modal Details** - Click dashboard icon to view sensor details
 
 ## Data Structure
 
@@ -98,7 +92,8 @@ src/
 - **Dashboard** - View detailed sensor information
 
 ### BGS Sites & Data
-- **4 Major Sites** with 202+ sensor locations
+- **4 Major Sites** with 200+ sensor locations
+- **No Artificial Limits** - Fetches all available sensors from FROST API
 - **Real Datastream Counts** - Accurate counts from FROST API endpoints
 - **Consistent Data** - Both table and expanded views use same API endpoints
 
@@ -109,11 +104,21 @@ src/
 - PostCSS configured with `@tailwindcss/postcss` plugin
 - TypeScript paths configured for clean imports
 - Real-time data fetching with error handling and loading states
-- Debug logging enabled for BGS API calls (check browser console)
+- **Minimal Design** - Only shadcn/ui components, no custom styling
+- **Easy to Maintain** - Standard design patterns, no complex customizations
 
 ## API Integration Notes
 
+- **No Limitations** - Removed `$top=100` parameter to fetch all sensors
 - **Consistent Endpoints** - Both main table and expanded views use `/Things(${sensorId})/Datastreams`
 - **Error Handling** - Graceful fallbacks for API failures
 - **Caching** - Intelligent caching of datastream details to avoid repeated calls
 - **Rate Limiting** - Considerate API usage with appropriate delays
+
+## Styling Guidelines
+
+- **Always use shadcn/ui components** - Button, Card, Table, Select, Input, Badge
+- **Standard Tailwind classes only** - No custom CSS variables
+- **Stone theme colors** - Consistent with shadcn/ui stone theme
+- **Minimal approach** - Professional, clean, easy to maintain
+- **No BGS-specific styling** - Use standard design tokens only

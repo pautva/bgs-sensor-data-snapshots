@@ -21,8 +21,6 @@ export default function BGSDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const {
-    sensors,
-    locations,
     isLoading,
     hasError,
     errors,
@@ -61,70 +59,63 @@ export default function BGSDashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground p-6 border-b">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2 lg:gap-3">
-                <Satellite className="h-6 w-6 lg:h-8 lg:w-8" />
-                <span className="hidden sm:inline">BGS Sensor Network Dashboard</span>
-                <span className="sm:hidden">BGS Dashboard</span>
+      <header className="border-b bg-background">
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-3">
+                <Satellite className="h-7 w-7" />
+                BGS Sensor Network Dashboard
               </h1>
-              <p className="text-xs lg:text-sm text-primary-foreground/80">
-                Real-time environmental monitoring across 4 major sites
+              <p className="text-sm text-muted-foreground mt-1">
+                Real-time environmental monitoring
               </p>
             </div>
             
-            {/* Status and controls */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-4">
               {/* Connection status */}
               <div className="flex items-center gap-2">
                 {hasError ? (
-                  <div className="flex items-center gap-2 text-destructive-foreground">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="text-sm">Connection Issues</span>
-                  </div>
+                  <>
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                    <span className="text-sm text-destructive">Issues</span>
+                  </>
                 ) : (
-                  <div className="flex items-center gap-2 text-green-400">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-sm">Connected</span>
-                  </div>
+                  <>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-muted-foreground">Connected</span>
+                  </>
                 )}
               </div>
 
               {/* Last updated */}
-              <div className="flex items-center gap-2 text-xs lg:text-sm text-primary-foreground/70">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
-                <span className="hidden sm:inline">Updated: {formatLastUpdated()}</span>
-                <span className="sm:hidden">{formatLastUpdated()}</span>
+                <span>{formatLastUpdated()}</span>
               </div>
 
               {/* Refresh button */}
               <Button
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={refetchAll}
                 disabled={isLoading}
-                className="flex items-center gap-2"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Refresh</span>
               </Button>
             </div>
           </div>
 
           {/* Error display */}
           {hasError && (
-            <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <div className="flex items-center gap-2 text-destructive-foreground">
+            <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div className="flex items-center gap-2 text-destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="font-medium">Connection Errors:</span>
               </div>
-              <ul className="mt-2 space-y-1 text-sm">
+              <ul className="mt-2 space-y-1 text-sm text-destructive/90">
                 {errors.map((error, index) => (
-                  <li key={index} className="text-destructive-foreground/90">
-                    • {error}
-                  </li>
+                  <li key={index}>• {error}</li>
                 ))}
               </ul>
             </div>
@@ -148,23 +139,15 @@ export default function BGSDashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-muted/50 mt-12">
+      <footer className="border-t mt-12">
         <div className="max-w-7xl mx-auto p-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>© 2025 British Geological Survey</span>
-              <Badge variant="outline" className="text-xs">
-                <Activity className="h-3 w-3 mr-1" />
-                Live Data
-              </Badge>
-            </div>
-            
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>Connected to BGS API Server</span>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span>bgs-sensor-data</span>
-              </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">
+              © 2025 British Geological Survey
+            </span>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-green-500" />
+              <span>Live Data</span>
             </div>
           </div>
         </div>

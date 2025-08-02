@@ -13,16 +13,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sensor, SensorCategory, SensorFilters, SensorStatus, Datastream } from '@/types/bgs-sensor';
-import { getEnhancedSensors, getSensorStatusColor, EnhancedSensor, getSensorDatastreams } from '@/lib/bgs-api';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Sensor, SensorStatus, Datastream } from '@/types/bgs-sensor';
+import { getEnhancedSensors, EnhancedSensor, getSensorDatastreams } from '@/lib/bgs-api';
 import { 
   Search, 
-  Filter, 
   ArrowUpDown, 
   ArrowUp, 
   ArrowDown,
   Eye,
-  MapPin,
   Activity
 } from 'lucide-react';
 
@@ -172,18 +177,6 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
     return uniqueTypes;
   }, [sensors]);
 
-  const getStatusColor = (status?: SensorStatus) => {
-    switch (status) {
-      case 'active':
-        return 'text-green-600';
-      case 'inactive':
-        return 'text-red-600';
-      case 'pending':
-        return 'text-yellow-600';
-      default:
-        return 'text-muted-foreground';
-    }
-  };
 
   if (isLoading) {
     return (
@@ -242,18 +235,19 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
           </div>
           
           <div className="flex gap-2">
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="h-10 w-48 px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <option value="all">All Types</option>
-              {sensorTypes.map(type => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {sensorTypes.map(type => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </CardHeader>
@@ -289,7 +283,10 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
             <TableBody>
               {filteredAndSortedSensors.map((sensor, index) => (
                 <React.Fragment key={sensor.id}>
-                  <TableRow className="hover:bg-muted/50">
+                  <TableRow 
+                    className="hover:bg-muted/50 cursor-pointer"
+                    onClick={() => toggleDatastreams(sensor.id)}
+                  >
                     {/* ID */}
                     <TableCell className="font-medium text-center">
                       {index + 1}
@@ -313,17 +310,10 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
                         <Badge variant="secondary" className="text-sm">
                           {sensor.total_datastreams}
                         </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleDatastreams(sensor.id)}
-                          className="h-6 w-6 p-0"
-                        >
-                          {expandedDatastreams.has(sensor.id) ? 
-                            <ArrowUp className="h-3 w-3" /> : 
-                            <ArrowDown className="h-3 w-3" />
-                          }
-                        </Button>
+                        {expandedDatastreams.has(sensor.id) ? 
+                          <ArrowUp className="h-4 w-4 text-muted-foreground" /> : 
+                          <ArrowDown className="h-4 w-4 text-muted-foreground" />
+                        }
                       </div>
                     </TableCell>
                     
@@ -332,10 +322,14 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onSensorSelect?.(sensor)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSensorSelect?.(sensor);
+                        }}
+                        className="flex items-center gap-2"
                       >
                         <Eye className="h-4 w-4" />
-                        <span className="sr-only">View details</span>
+                        <span>Explore</span>
                       </Button>
                     </TableCell>
                   </TableRow>
