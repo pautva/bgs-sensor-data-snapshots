@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SensorTable } from './SensorTable';
 import { SensorDetailModal } from './SensorDetailModal';
+import { SummaryCards } from './SummaryCards';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sensor } from '@/types/bgs-sensor';
@@ -21,6 +22,9 @@ export default function BGSDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const {
+    sensors,
+    locations,
+    stats,
     isLoading,
     hasError,
     errors,
@@ -38,6 +42,12 @@ export default function BGSDashboard() {
     setIsModalOpen(false);
     setSelectedSensor(null);
   };
+
+  // Calculate summary metrics
+  const totalSensors = sensors?.length || 0;
+  const totalLocations = locations?.length || 0;
+  const activeSites = stats?.sites?.length || 4; // Default to 4 major BGS sites
+  const totalDatastreams = sensors?.reduce((sum, sensor) => sum + sensor.total_datastreams, 0) || 0;
 
   const formatLastUpdated = () => {
     if (!lastUpdated) return 'Never';
@@ -126,6 +136,15 @@ export default function BGSDashboard() {
       {/* Main content */}
       <main className="p-6">
         <div className="max-w-7xl mx-auto space-y-6">
+          {/* Summary Cards */}
+          <SummaryCards
+            totalSensors={totalSensors}
+            totalLocations={totalLocations}
+            activeSites={activeSites}
+            totalDatastreams={totalDatastreams}
+            isLoading={isLoading}
+          />
+
           {/* Primary Tool - Sensor Network Overview (Full Width) */}
           <section aria-labelledby="table-heading">
             <h2 id="table-heading" className="sr-only">Sensor Overview</h2>
