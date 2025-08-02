@@ -175,13 +175,13 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
   const getStatusColor = (status?: SensorStatus) => {
     switch (status) {
       case 'active':
-        return 'var(--sensor-active)';
+        return 'text-green-600';
       case 'inactive':
-        return 'var(--sensor-inactive)';
+        return 'text-red-600';
       case 'pending':
-        return 'var(--sensor-pending)';
+        return 'text-yellow-600';
       default:
-        return 'var(--muted)';
+        return 'text-muted-foreground';
     }
   };
 
@@ -245,7 +245,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="h-10 px-3 py-2 text-sm rounded-md border border-input bg-background"
+              className="h-10 w-48 px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value="all">All Types</option>
               {sensorTypes.map(type => (

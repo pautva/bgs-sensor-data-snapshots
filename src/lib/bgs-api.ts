@@ -347,16 +347,16 @@ export async function getDashboardStats(): Promise<BGSApiResponse<DashboardStats
 // Utility functions for sensor data processing
 export function getSensorStatusColor(category: SensorCategory): string {
   const colorMap: Record<SensorCategory, string> = {
-    'Groundwater Monitoring': 'var(--groundwater-monitoring)',
-    'Weather Station': 'var(--weather-station)',
-    'Soil Gas Monitoring': 'var(--soil-gas-monitoring)',
-    'Atmospheric Monitoring': 'var(--atmospheric-monitoring)',
-    'DTS Monitoring': 'var(--dts-monitoring)',
-    'DTC Monitoring': 'var(--dtc-monitoring)',
-    'Barometer': 'var(--barometer)'
+    'Groundwater Monitoring': 'text-blue-600',
+    'Weather Station': 'text-purple-600',
+    'Soil Gas Monitoring': 'text-orange-600',
+    'Atmospheric Monitoring': 'text-cyan-600',
+    'DTS Monitoring': 'text-violet-600',
+    'DTC Monitoring': 'text-pink-600',
+    'Barometer': 'text-teal-600'
   };
   
-  return colorMap[category] || 'var(--muted)';
+  return colorMap[category] || 'text-muted-foreground';
 }
 
 export function formatSensorValue(value: number | string, unit?: string): string {

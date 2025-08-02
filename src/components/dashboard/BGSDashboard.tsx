@@ -61,16 +61,16 @@ export default function BGSDashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground p-[var(--dashboard-padding)] border-b">
+      <header className="bg-primary text-primary-foreground p-6 border-b">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1">
-              <h1 className="text-[var(--text-xl)] lg:text-[var(--text-2xl)] font-bold flex items-center gap-2 lg:gap-3">
+              <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2 lg:gap-3">
                 <Satellite className="h-6 w-6 lg:h-8 lg:w-8" />
                 <span className="hidden sm:inline">BGS Sensor Network Dashboard</span>
                 <span className="sm:hidden">BGS Dashboard</span>
               </h1>
-              <p className="text-[var(--text-xs)] lg:text-[var(--text-sm)] opacity-90">
+              <p className="text-xs lg:text-sm text-primary-foreground/80">
                 Real-time environmental monitoring across 4 major sites
               </p>
             </div>
@@ -85,7 +85,7 @@ export default function BGSDashboard() {
                     <span className="text-sm">Connection Issues</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-green-100">
+                  <div className="flex items-center gap-2 text-green-400">
                     <CheckCircle className="h-4 w-4" />
                     <span className="text-sm">Connected</span>
                   </div>
@@ -93,7 +93,7 @@ export default function BGSDashboard() {
               </div>
 
               {/* Last updated */}
-              <div className="flex items-center gap-2 text-xs lg:text-sm opacity-80">
+              <div className="flex items-center gap-2 text-xs lg:text-sm text-primary-foreground/70">
                 <Clock className="h-4 w-4" />
                 <span className="hidden sm:inline">Updated: {formatLastUpdated()}</span>
                 <span className="sm:hidden">{formatLastUpdated()}</span>
@@ -133,8 +133,8 @@ export default function BGSDashboard() {
       </header>
 
       {/* Main content */}
-      <main className="p-[var(--dashboard-padding)]">
-        <div className="max-w-7xl mx-auto space-y-[var(--card-gap)]">
+      <main className="p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
           {/* Primary Tool - Sensor Network Overview (Full Width) */}
           <section aria-labelledby="table-heading">
             <h2 id="table-heading" className="sr-only">Sensor Overview</h2>
@@ -148,8 +148,8 @@ export default function BGSDashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-muted/30 mt-12">
-        <div className="max-w-7xl mx-auto p-[var(--dashboard-padding)]">
+      <footer className="border-t bg-muted/50 mt-12">
+        <div className="max-w-7xl mx-auto p-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>© 2025 British Geological Survey</span>
@@ -162,7 +162,7 @@ export default function BGSDashboard() {
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>Connected to BGS API Server</span>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[var(--sensor-active)]" />
+                <div className="w-2 h-2 rounded-full bg-green-500" />
                 <span>bgs-sensor-data</span>
               </div>
             </div>
