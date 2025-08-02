@@ -7,7 +7,7 @@ First, run the development server:
 ```bash
 npm run dev
 # or
-next dev --turbopack -p 4000 # to run on port 4000
+npm run dev -- --turbopack -p 4000 # to run on port 4000
 # or
 yarn dev
 # or

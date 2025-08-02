@@ -1,0 +1,222 @@
+'use client';
+
+import { useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Datastream, Observation } from '@/types/bgs-sensor';
+import { formatSensorValue } from '@/lib/bgs-api';
+import { TrendingUp } from 'lucide-react';
+
+interface DatastreamChartProps {
+  datastreams: Datastream[];
+  observations: Record<number, Observation[]>;
+  className?: string;
+}
+
+// Chart color palette using Tailwind colors
+const CHART_COLORS = [
+  '#8b5cf6', // violet-500
+  '#06b6d4', // cyan-500  
+  '#10b981', // emerald-500
+  '#f59e0b', // amber-500
+  '#ef4444'  // red-500
+];
+
+export function DatastreamChart({ datastreams, observations, className }: DatastreamChartProps) {
+  // Theme-aware colors for light and dark mode
+  const axisColor = '#94a3b8'; // slate-400 - works well in both themes
+  const gridColor = '#e2e8f0'; // slate-200 - light theme grid
+  const textColor = '#64748b'; // slate-500 - readable in both themes
+  const chartData = useMemo(() => {
+    if (!datastreams.length || !Object.keys(observations).length) return [];
+
+    // Create individual series for each datastream, then merge by timestamp
+    const allDataPoints = new Map<string, any>();
+
+    // Process each datastream's observations
+    datastreams.forEach(datastream => {
+      const datastreamObs = observations[datastream.datastream_id] || [];
+      
+      // Take the latest 50 observations for this datastream
+      datastreamObs.slice(-50).forEach(obs => {
+        const timestamp = obs.phenomenon_time;
+        const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        // Initialize or get existing data point
+        if (!allDataPoints.has(timestamp)) {
+          allDataPoints.set(timestamp, {
+            timestamp,
+            time,
+            date: new Date(timestamp).toLocaleDateString()
+          });
+        }
+        
+        const dataPoint = allDataPoints.get(timestamp);
+        if (typeof obs.result === 'number' && !isNaN(obs.result)) {
+          dataPoint[`datastream_${datastream.datastream_id}`] = obs.result;
+        }
+      });
+    });
+
+    // Convert to array and sort by timestamp, take latest 50
+    return Array.from(allDataPoints.values())
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .slice(-50);
+  }, [datastreams, observations]);
+
+
+  if (!datastreams.length) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Datastream Trends
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-8">
+            No datastreams available to display.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!chartData.length) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Datastream Trends
+            <Badge variant="secondary" className="ml-auto">
+              {datastreams.length} datastreams
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Loading chart data...
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" />
+          Datastream Trends
+          <Badge variant="secondary" className="ml-auto">
+            {datastreams.length} datastreams
+          </Badge>
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Latest 50 readings showing trends over time
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={axisColor} strokeOpacity={0.5} />
+              <XAxis 
+                dataKey="time" 
+                tick={{ fontSize: 12, fill: textColor }}
+                interval="preserveStartEnd"
+                stroke={axisColor}
+                strokeOpacity={0.7}
+              />
+              <YAxis 
+                tick={{ fontSize: 12, fill: textColor }}
+                width={60}
+                stroke={axisColor}
+                strokeOpacity={0.7}
+              />
+              <Tooltip 
+                content={({ active, payload, label }) => {
+                  if (!active || !payload || !payload.length) return null;
+                  
+                  return (
+                    <div className="bg-background border border-border rounded-md shadow-lg p-3 text-sm">
+                      <p className="font-medium text-foreground mb-2">Time: {label}</p>
+                      <div className="space-y-1">
+                        {payload.map((entry, index) => {
+                          const datastream = datastreams.find(ds => `datastream_${ds.datastream_id}` === entry.dataKey);
+                          const color = CHART_COLORS[index % CHART_COLORS.length];
+                          const value = entry.value as number;
+                          const unit = datastream?.unit_symbol || '';
+                          const fullValue = typeof value === 'number' 
+                            ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })
+                            : value;
+                          
+                          return (
+                            <div key={entry.dataKey} className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-3 h-3 rounded-full flex-shrink-0" 
+                                  style={{ backgroundColor: color }}
+                                />
+                                <span className="text-muted-foreground">
+                                  {datastream?.name || entry.dataKey}
+                                </span>
+                              </div>
+                              <span className="font-mono font-medium text-foreground">
+                                {unit ? `${fullValue} ${unit}` : fullValue}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }}
+              />
+              {datastreams.map((datastream, index) => {
+                const color = CHART_COLORS[index % CHART_COLORS.length];
+                const dataKey = `datastream_${datastream.datastream_id}`;
+                
+                return (
+                  <Line
+                    key={datastream.datastream_id}
+                    type="monotone"
+                    dataKey={dataKey}
+                    stroke={color}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls={true}
+                    name={datastream.name}
+                    isAnimationActive={false}
+                  />
+                );
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        
+        {/* Legend */}
+        <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t">
+          {datastreams.map((datastream, index) => {
+            const color = CHART_COLORS[index % CHART_COLORS.length];
+            
+            return (
+              <div key={datastream.datastream_id} className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: color }}
+                />
+                <span className="text-sm">
+                  {datastream.name} ({datastream.unit_symbol})
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

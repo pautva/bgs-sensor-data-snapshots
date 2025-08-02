@@ -4,12 +4,11 @@ import { useState } from 'react';
 import { SensorTable } from './SensorTable';
 import { SensorDetailSheet } from './SensorDetailSheet';
 import { SummaryCards } from './SummaryCards';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Toggle } from '@/components/ui/toggle';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Sensor } from '@/types/bgs-sensor';
 import { useRealTimeData } from '@/hooks/useSensorData';
 import { 
-  Activity, 
   RefreshCw, 
   AlertTriangle,
   CheckCircle,
@@ -103,15 +102,20 @@ export default function BGSDashboard() {
                 <span>{formatLastUpdated()}</span>
               </div>
 
+              {/* Theme toggle */}
+              <ThemeToggle />
+
               {/* Refresh button */}
-              <Button
+              <Toggle
                 variant="outline"
                 size="sm"
-                onClick={refetchAll}
+                pressed={false}
+                onPressedChange={refetchAll}
                 disabled={isLoading}
+                aria-label="Refresh data"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
+              </Toggle>
             </div>
           </div>
 

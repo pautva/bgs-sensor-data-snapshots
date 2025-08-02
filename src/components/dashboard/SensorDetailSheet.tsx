@@ -11,6 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DatastreamChart } from './DatastreamChart';
 import { Sensor, Datastream, Observation } from '@/types/bgs-sensor';
 import { getSensorDatastreams, getDatastreamObservations, getSensorStatusColor, formatSensorValue } from '@/lib/bgs-api';
 import { 
@@ -33,8 +34,10 @@ export function SensorDetailSheet({ sensor, isOpen, onClose }: SensorDetailSheet
   const [datastreams, setDatastreams] = useState<Datastream[]>([]);
   const [selectedDatastream, setSelectedDatastream] = useState<Datastream | null>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
+  const [chartObservations, setChartObservations] = useState<Record<number, Observation[]>>({});
   const [isLoadingDatastreams, setIsLoadingDatastreams] = useState(false);
   const [isLoadingObservations, setIsLoadingObservations] = useState(false);
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch datastreams when sensor changes
@@ -43,6 +46,7 @@ export function SensorDetailSheet({ sensor, isOpen, onClose }: SensorDetailSheet
       setDatastreams([]);
       setSelectedDatastream(null);
       setObservations([]);
+      setChartObservations({});
       return;
     }
 
@@ -66,6 +70,42 @@ export function SensorDetailSheet({ sensor, isOpen, onClose }: SensorDetailSheet
 
     fetchDatastreams();
   }, [sensor, isOpen]);
+
+  // Fetch chart observations for all datastreams
+  useEffect(() => {
+    if (!datastreams.length) {
+      setChartObservations({});
+      return;
+    }
+
+    const fetchChartData = async () => {
+      try {
+        setIsLoadingChart(true);
+        const observationsPromises = datastreams.slice(0, 5).map(async (datastream) => {
+          const response = await getDatastreamObservations(datastream.datastream_id, 50);
+          return {
+            datastreamId: datastream.datastream_id,
+            observations: response.success ? response.data.observations : []
+          };
+        });
+
+        const results = await Promise.all(observationsPromises);
+        const chartData: Record<number, Observation[]> = {};
+        
+        results.forEach(({ datastreamId, observations }) => {
+          chartData[datastreamId] = observations;
+        });
+
+        setChartObservations(chartData);
+      } catch (err) {
+        console.error('Error fetching chart data:', err);
+      } finally {
+        setIsLoadingChart(false);
+      }
+    };
+
+    fetchChartData();
+  }, [datastreams]);
 
   // Fetch observations when datastream is selected
   useEffect(() => {
@@ -169,6 +209,12 @@ export function SensorDetailSheet({ sensor, isOpen, onClose }: SensorDetailSheet
               </div>
             </CardContent>
           </Card>
+
+          {/* Datastream Chart */}
+          <DatastreamChart 
+            datastreams={datastreams.slice(0, 5)} 
+            observations={chartObservations}
+          />
 
           {/* Datastreams */}
           <Card>

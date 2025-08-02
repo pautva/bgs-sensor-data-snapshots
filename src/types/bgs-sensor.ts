@@ -16,7 +16,7 @@ export type SensorSite =
   | 'UKGEOS Cheshire Observatory'
   | 'Wallingford';
 
-export type SensorStatus = 'active' | 'inactive' | 'pending';
+export type SensorStatus = 'Active' | 'Inactive' | 'Maintenance';
 
 export interface Sensor {
   id: number;

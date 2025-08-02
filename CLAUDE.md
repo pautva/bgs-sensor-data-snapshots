@@ -24,6 +24,9 @@ This is a minimal, professional BGS Sensor Network Dashboard built with Next.js 
 
 ### Key Dependencies
 - `@radix-ui/react-select` - Accessible select component
+- `@radix-ui/react-toggle` - Toggle component for interactive elements
+- `@radix-ui/react-slot` - Slot component for asChild pattern
+- `chart` - React charting library for data visualizations
 - `class-variance-authority` & `clsx` - For conditional CSS classes
 - `tailwind-merge` - Merges Tailwind classes efficiently
 - `lucide-react` - Icon library for UI elements
@@ -33,6 +36,7 @@ This is a minimal, professional BGS Sensor Network Dashboard built with Next.js 
 - **Real-time Data Integration** - Direct connection to BGS FROST API (`https://sensors.bgs.ac.uk/FROST-Server/v1.1`)
 - **Sensor Network Overview** - Main table showing all sensors with expandable datastreams
 - **Search & Filter** - Filter sensors by type and search by name/description
+- **Dark Mode Support** - System-aware theme switching with persistent preferences
 - **Minimal UI** - Clean, professional interface using shadcn/ui stone theme
 - **No Limitations** - Fetches all available sensors (no artificial limits)
 
@@ -54,13 +58,18 @@ src/
 │   │   ├── select.tsx       # Select dropdown component
 │   │   ├── input.tsx        # Input component
 │   │   ├── badge.tsx        # Badge component
+│   │   ├── toggle.tsx       # Toggle component
+│   │   ├── chart.tsx        # Chart components (shadcn/ui + recharts)
 │   │   ├── sheet.tsx        # Sheet/sidebar component
 │   │   └── dialog.tsx       # Dialog component (for sheet)
 │   └── dashboard/       # Dashboard components
 │       ├── BGSDashboard.tsx      # Main dashboard layout
 │       ├── SensorTable.tsx       # Primary sensor table with filtering
 │       ├── SensorDetailSheet.tsx # Right-side sheet for sensor details
+│       ├── DatastreamChart.tsx   # Chart component for datastream visualization
 │       └── SummaryCards.tsx      # Overview metrics cards
+│   ├── theme-provider.tsx   # Theme context provider for dark mode
+│   ├── theme-toggle.tsx     # Dark mode toggle component
 ├── hooks/
 │   └── useSensorData.ts     # Real-time sensor data fetching
 ├── lib/
@@ -74,7 +83,8 @@ src/
 - **Tailwind CSS v4** with shadcn/ui stone theme
 - **No Custom CSS Variables** - Uses only standard shadcn/ui color tokens
 - **Minimal Approach** - Standard Tailwind classes (text-green-600, text-blue-600, etc.)
-- Dark mode support with `.dark` class variant
+- **Dark Mode Support** - System-aware theme switching with `.dark` class variant
+- **Theme Persistence** - User preferences saved to localStorage
 - **Easy Maintenance** - No custom design tokens to maintain
 
 ### Data Integration
@@ -92,7 +102,9 @@ src/
    - **Sortable columns** - Sort by name or datastream count
 3. **Right-side Sheet** - Click "Explore" to open sensor details in half-screen sidebar
 4. **Real-time Updates** - Live connection status and automatic data refresh
-5. **Minimal Design** - Clean, professional shadcn/ui stone theme
+5. **Dark Mode Toggle** - System-aware theme switching in navbar with persistent preferences
+6. **Datastream Visualization** - Interactive line charts showing latest 50 readings per datastream
+7. **Minimal Design** - Clean, professional shadcn/ui stone theme
 
 ## Data Structure
 
@@ -129,11 +141,12 @@ src/
 
 ## Styling Guidelines
 
-- **Always use shadcn/ui components** - Button, Card, Table, Select, Input, Badge, Sheet
+- **Always use shadcn/ui components first** - Before creating custom components, always check if shadcn/ui has a suitable component (Button, Card, Table, Select, Input, Badge, Sheet, Toggle, Switch, etc.)
 - **Standard Tailwind classes only** - No custom CSS variables
 - **Stone theme colors** - Consistent with shadcn/ui stone theme
 - **Minimal approach** - Professional, clean, easy to maintain
 - **No BGS-specific styling** - Use standard design tokens only
+- **Component preference order**: 1) shadcn/ui components, 2) Radix primitives if shadcn/ui doesn't exist, 3) custom components as last resort
 
 ## Key Features Implemented
 
