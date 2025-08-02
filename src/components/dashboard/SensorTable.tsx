@@ -391,7 +391,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
                           e.stopPropagation();
                           onSensorSelect?.(sensor);
                         }}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 hover:cursor-pointer"
                       >
                         <Eye className="h-4 w-4" />
                         <span>Explore</span>

@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Toggle } from '@/components/ui/toggle';
 import { Datastream, Observation } from '@/types/bgs-sensor';
 import { formatSensorValue } from '@/lib/bgs-api';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, BarChart3 } from 'lucide-react';
 
 interface DatastreamChartProps {
   datastreams: Datastream[];
@@ -24,6 +25,28 @@ const CHART_COLORS = [
 ];
 
 export function DatastreamChart({ datastreams, observations, className }: DatastreamChartProps) {
+  const [isNormalised, setIsNormalised] = useState(true);
+  const [visibleDatastreams, setVisibleDatastreams] = useState<Set<number>>(
+    () => new Set(datastreams.map(ds => ds.datastream_id))
+  );
+
+  // Update visible datastreams when datastreams prop changes
+  useEffect(() => {
+    setVisibleDatastreams(new Set(datastreams.map(ds => ds.datastream_id)));
+  }, [datastreams]);
+
+  const toggleDatastreamVisibility = (datastreamId: number) => {
+    setVisibleDatastreams(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(datastreamId)) {
+        newSet.delete(datastreamId);
+      } else {
+        newSet.add(datastreamId);
+      }
+      return newSet;
+    });
+  };
+  
   // Theme-aware colors for light and dark mode
   const axisColor = '#94a3b8'; // slate-400 - works well in both themes
   const gridColor = '#e2e8f0'; // slate-200 - light theme grid
@@ -60,10 +83,53 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
     });
 
     // Convert to array and sort by timestamp, take latest 50
-    return Array.from(allDataPoints.values())
+    const rawData = Array.from(allDataPoints.values())
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       .slice(-50);
-  }, [datastreams, observations]);
+
+    // Apply normalization if enabled
+    if (isNormalised && rawData.length > 0) {
+      // Calculate min/max for each datastream across all time points
+      const datastreamRanges = new Map<string, { min: number; max: number }>();
+      
+      datastreams.forEach(datastream => {
+        const dataKey = `datastream_${datastream.datastream_id}`;
+        const values = rawData
+          .map(point => point[dataKey])
+          .filter(val => typeof val === 'number' && !isNaN(val));
+        
+        if (values.length > 0) {
+          const min = Math.min(...values);
+          const max = Math.max(...values);
+          datastreamRanges.set(dataKey, { min, max });
+        }
+      });
+
+      // Normalise each data point while preserving original values
+      return rawData.map(point => {
+        const NormalisedPoint = { ...point };
+        
+        datastreams.forEach(datastream => {
+          const dataKey = `datastream_${datastream.datastream_id}`;
+          const originalDataKey = `${dataKey}_original`;
+          const value = point[dataKey];
+          const range = datastreamRanges.get(dataKey);
+          
+          if (typeof value === 'number' && !isNaN(value) && range) {
+            const { min, max } = range;
+            // Store original value for tooltip
+            NormalisedPoint[originalDataKey] = value;
+            // Min-max normalization to 0-1 scale
+            NormalisedPoint[dataKey] = max === min ? 0 : (value - min) / (max - min);
+          }
+        });
+        
+        return NormalisedPoint;
+      });
+    }
+
+    return rawData;
+  }, [datastreams, observations, isNormalised]);
 
 
   if (!datastreams.length) {
@@ -108,15 +174,28 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" />
-          Datastream Trends
-          <Badge variant="secondary" className="ml-auto">
-            {datastreams.length} datastreams
-          </Badge>
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            <CardTitle className="text-lg">Datastream Trends</CardTitle>
+            <Badge variant="secondary">
+              {datastreams.length} datastreams
+            </Badge>
+          </div>
+          <Toggle
+            pressed={isNormalised}
+            onPressedChange={setIsNormalised}
+            aria-label="Toggle normalization"
+            size="sm"
+            variant="outline"
+          >
+            <BarChart3 className="h-4 w-4 mr-1" />
+            {isNormalised ? 'Normalised' : 'Raw Values'}
+          </Toggle>
+        </div>
         <p className="text-sm text-muted-foreground">
           Latest 50 readings showing trends over time
+          {isNormalised && ' (Normalised to 0-1 scale for comparison)'}
         </p>
       </CardHeader>
       <CardContent>
@@ -136,6 +215,8 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
                 width={60}
                 stroke={axisColor}
                 strokeOpacity={0.7}
+                domain={isNormalised ? [-0.1, 1.1] : ['auto', 'auto']}
+                tickFormatter={isNormalised ? (value) => value.toFixed(2) : undefined}
               />
               <Tooltip 
                 content={({ active, payload, label }) => {
@@ -148,11 +229,34 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
                         {payload.map((entry, index) => {
                           const datastream = datastreams.find(ds => `datastream_${ds.datastream_id}` === entry.dataKey);
                           const color = CHART_COLORS[index % CHART_COLORS.length];
-                          const value = entry.value as number;
+                          const normalizedValue = entry.value as number;
                           const unit = datastream?.unit_symbol || '';
-                          const fullValue = typeof value === 'number' 
-                            ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })
-                            : value;
+                          
+                          // Get original value if in normalized mode
+                          const originalDataKey = `${entry.dataKey}_original`;
+                          const originalValue = isNormalised && entry.payload[originalDataKey] 
+                            ? entry.payload[originalDataKey] 
+                            : normalizedValue;
+                          
+                          let displayValue: string;
+                          if (isNormalised && typeof originalValue === 'number') {
+                            const formattedOriginal = originalValue.toLocaleString('en-US', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 6 
+                            });
+                            const formattedNormalized = normalizedValue.toFixed(3);
+                            displayValue = unit 
+                              ? `${formattedOriginal} ${unit} (${formattedNormalized} normalized)`
+                              : `${formattedOriginal} (${formattedNormalized} normalized)`;
+                          } else if (typeof normalizedValue === 'number') {
+                            const formatted = normalizedValue.toLocaleString('en-US', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 6 
+                            });
+                            displayValue = unit ? `${formatted} ${unit}` : formatted;
+                          } else {
+                            displayValue = String(normalizedValue);
+                          }
                           
                           return (
                             <div key={entry.dataKey} className="flex items-center justify-between gap-4">
@@ -165,8 +269,8 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
                                   {datastream?.name || entry.dataKey}
                                 </span>
                               </div>
-                              <span className="font-mono font-medium text-foreground">
-                                {unit ? `${fullValue} ${unit}` : fullValue}
+                              <span className="font-mono font-medium text-foreground text-right">
+                                {displayValue}
                               </span>
                             </div>
                           );
@@ -179,18 +283,20 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
               {datastreams.map((datastream, index) => {
                 const color = CHART_COLORS[index % CHART_COLORS.length];
                 const dataKey = `datastream_${datastream.datastream_id}`;
+                const isVisible = visibleDatastreams.has(datastream.datastream_id);
                 
                 return (
                   <Line
                     key={datastream.datastream_id}
                     type="monotone"
                     dataKey={dataKey}
-                    stroke={color}
+                    stroke={isVisible ? color : 'transparent'}
                     strokeWidth={2}
                     dot={false}
                     connectNulls={true}
                     name={datastream.name}
                     isAnimationActive={false}
+                    hide={!isVisible}
                   />
                 );
               })}
@@ -202,17 +308,32 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
         <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t">
           {datastreams.map((datastream, index) => {
             const color = CHART_COLORS[index % CHART_COLORS.length];
+            const isVisible = visibleDatastreams.has(datastream.datastream_id);
             
             return (
-              <div key={datastream.datastream_id} className="flex items-center gap-2">
+              <button
+                key={datastream.datastream_id}
+                onClick={() => toggleDatastreamVisibility(datastream.datastream_id)}
+                className={`flex items-center gap-2 px-2 py-1 rounded-md transition-all hover:bg-muted/50 ${
+                  isVisible ? 'opacity-100' : 'opacity-50'
+                }`}
+                title={`Click to ${isVisible ? 'hide' : 'show'} ${datastream.name}`}
+              >
                 <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: color }}
+                  className={`w-3 h-3 rounded-full transition-all ${
+                    isVisible ? '' : 'border-2 border-current bg-transparent'
+                  }`}
+                  style={{ 
+                    backgroundColor: isVisible ? color : 'transparent',
+                    borderColor: !isVisible ? color : 'transparent'
+                  }}
                 />
-                <span className="text-sm">
+                <span className={`text-sm transition-all ${
+                  isVisible ? '' : 'line-through'
+                }`}>
                   {datastream.name} ({datastream.unit_symbol})
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>

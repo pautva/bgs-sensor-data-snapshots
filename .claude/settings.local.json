@@ -4,12 +4,13 @@
       "Bash(mkdir:*)",
       "Bash(claude mcp)",
       "Bash(claude mcp:*)",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "WebFetch(domain:sensors.bgs.ac.uk)"
     ],
     "deny": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "shadcn-ui"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

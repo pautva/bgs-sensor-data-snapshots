@@ -55,12 +55,19 @@ export interface Datastream {
   observation_type: string;
 }
 
+export interface ObservationQuality {
+  status: string;
+  reason?: string;
+  quality?: string;
+  event_id?: string;
+}
+
 export interface Observation {
   observation_id: number;
   phenomenon_time: string;
   result_time: string;
   result: number | string;
-  result_quality: string;
+  result_quality: ObservationQuality | string;
   parameters?: Record<string, unknown>;
 }
 

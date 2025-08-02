@@ -5,7 +5,7 @@ import { Sensor, Location, DashboardStats, BGSApiResponse } from '@/types/bgs-se
 import { listSensors, listLocations, getDashboardStats } from '@/lib/bgs-api';
 
 // Hook for fetching sensor data
-export function useSensorData(autoRefresh: boolean = true, refreshInterval: number = 30000) {
+export function useSensorData(autoRefresh: boolean = false, refreshInterval: number = 30000) {
   const [sensors, setSensors] = useState<Sensor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export function useSensorData(autoRefresh: boolean = true, refreshInterval: numb
 }
 
 // Hook for fetching location data
-export function useLocationData(autoRefresh: boolean = true, refreshInterval: number = 60000) {
+export function useLocationData(autoRefresh: boolean = false, refreshInterval: number = 60000) {
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +101,7 @@ export function useLocationData(autoRefresh: boolean = true, refreshInterval: nu
 }
 
 // Hook for fetching dashboard statistics
-export function useDashboardStats(autoRefresh: boolean = true, refreshInterval: number = 45000) {
+export function useDashboardStats(autoRefresh: boolean = false, refreshInterval: number = 45000) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -150,9 +150,9 @@ export function useDashboardStats(autoRefresh: boolean = true, refreshInterval: 
 
 // Hook for managing real-time updates across multiple data sources
 export function useRealTimeData() {
-  const sensorData = useSensorData(true, 30000);
-  const locationData = useLocationData(true, 60000);
-  const statsData = useDashboardStats(true, 45000);
+  const sensorData = useSensorData(false, 30000);
+  const locationData = useLocationData(false, 60000);
+  const statsData = useDashboardStats(false, 45000);
 
   const isLoading = sensorData.isLoading || locationData.isLoading || statsData.isLoading;
   const hasError = !!(sensorData.error || locationData.error || statsData.error);

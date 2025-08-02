@@ -63,17 +63,18 @@ src/
 │   │   ├── sheet.tsx        # Sheet/sidebar component
 │   │   └── dialog.tsx       # Dialog component (for sheet)
 │   └── dashboard/       # Dashboard components
-│       ├── BGSDashboard.tsx      # Main dashboard layout
+│       ├── BGSDashboard.tsx      # Main dashboard layout (manual refresh only)
 │       ├── SensorTable.tsx       # Primary sensor table with filtering
-│       ├── SensorDetailSheet.tsx # Right-side sheet for sensor details
-│       ├── DatastreamChart.tsx   # Chart component for datastream visualization
+│       ├── SensorDetailSheet.tsx # Enhanced sensor details with location & borehole ref
+│       ├── DatastreamChart.tsx   # Stable chart component (no auto-refresh)
+│       ├── DatastreamSummary.tsx # Compact statistics cards for datastream data
 │       └── SummaryCards.tsx      # Overview metrics cards
 │   ├── theme-provider.tsx   # Theme context provider for dark mode
 │   ├── theme-toggle.tsx     # Dark mode toggle component
 ├── hooks/
-│   └── useSensorData.ts     # Real-time sensor data fetching
+│   └── useSensorData.ts     # Manual sensor data fetching (auto-refresh disabled)
 ├── lib/
-│   ├── bgs-api.ts          # BGS FROST API integration
+│   ├── bgs-api.ts          # BGS FROST API integration with location support
 │   └── utils.ts            # Utility functions (cn helper)
 └── types/
     └── bgs-sensor.ts       # TypeScript interfaces for BGS data
@@ -89,9 +90,12 @@ src/
 
 ### Data Integration
 - **BGS FROST API** - Real sensor data from `https://sensors.bgs.ac.uk/FROST-Server/v1.1`
+- **Location Data** - GPS coordinates and deployment site information
 - **Sensor Types** - Groundwater Monitoring, Weather Station, Soil Gas Monitoring, etc.
+- **Gas Measurements** - Carbon Dioxide, Methane, Oxygen from GasClam probes
 - **Sites Covered** - UKGEOS Glasgow Observatory, BGS Cardiff, UKGEOS Cheshire Observatory, Wallingford
-- **Real-time Updates** - Automatic data refresh with configurable intervals
+- **Manual Updates** - User-controlled data refresh via refresh button
+- **Borehole References** - Automatic extraction from sensor names (GGA01, BH123, etc.)
 
 ### Current Implementation
 1. **Summary Cards** - Key metrics overview (sensors, locations, sites, datastreams)
@@ -100,11 +104,16 @@ src/
    - **Advanced Filtering** - Search, sensor type, and measurement type filters
    - **Smart measurement extraction** - Filters by core types (Temperature, Conductivity, etc.)
    - **Sortable columns** - Sort by name or datastream count
-3. **Right-side Sheet** - Click "Explore" to open sensor details in half-screen sidebar
-4. **Real-time Updates** - Live connection status and automatic data refresh
+3. **Enhanced Right-side Sheet** - Click "Explore" to open sensor details with:
+   - **Location & Coordinates** - GPS coordinates in [longitude, latitude] format
+   - **Borehole Reference** - Automatic extraction from sensor names (e.g., GGA01)
+   - **Multiple Location Support** - Expandable list for sensors with multiple deployment sites
+   - **Stable Charts** - No auto-refresh to prevent chart resets
+4. **Manual Refresh System** - User-controlled data updates via refresh button only
 5. **Dark Mode Toggle** - System-aware theme switching in navbar with persistent preferences
 6. **Datastream Visualization** - Interactive line charts showing latest 50 readings per datastream
-7. **Minimal Design** - Clean, professional shadcn/ui stone theme
+7. **Data Summary Cards** - Compact statistics showing min/max/avg/latest values with trend indicators
+8. **Minimal Design** - Clean, professional shadcn/ui stone theme
 
 ## Data Structure
 
@@ -133,6 +142,8 @@ src/
 
 ## API Integration Notes
 
+- **Real Data Integration** - Uses actual BGS FROST API endpoints instead of mock data
+- **Observations Endpoint** - `/Datastreams(${id})/Observations?$top=${limit}&$orderby=phenomenonTime%20desc`
 - **No Limitations** - Removed `$top=100` parameter to fetch all sensors
 - **Consistent Endpoints** - Both main table and expanded views use `/Things(${sensorId})/Datastreams`
 - **Error Handling** - Graceful fallbacks for API failures
@@ -160,7 +171,8 @@ src/
 - **Sensor Type Filter** - Filter by Groundwater Logger, Weather Station, etc.
 - **Measurement Type Filter** - Smart extraction of core measurement types:
   - Temperature, Conductivity, Salinity, TDS, pH, Pressure, Humidity
-  - Wind Speed, Wind Direction, Dissolved Oxygen, etc.
+  - Wind Speed, Wind Direction, Dissolved Oxygen
+  - Gas Measurements: Carbon Dioxide, Methane, Oxygen, etc.
 - **Combined Filtering** - All filters work together
 - **Clear Filters** - One-click reset of all filters
 
@@ -173,6 +185,9 @@ src/
 ### **Right-side Detail Sheet**
 - **Half-screen width** - Non-blocking sidebar view
 - **Comprehensive details** - Sensor overview, datastreams, recent observations
+- **Data Summary Cards** - Compact grid showing min/max/avg statistics with trend indicators
+- **Real-time Charts** - Interactive line charts with actual sensor data from BGS FROST API
+- **Gas Measurement Support** - Proper display of Carbon Dioxide, Methane, Oxygen measurements
 - **Metadata access** - Direct link to BGS metadata in header
 - **Clickable datastreams** - Select to view recent observations
 - **Smooth animations** - Slides in from right with overlay
@@ -180,5 +195,32 @@ src/
 ### **Performance Optimizations**
 - **No API limits** - Fetches all available sensors (removed $top=100)
 - **Smart caching** - Intelligent datastream caching to avoid repeated calls
+- **Real Data Processing** - Actual sensor observations with proper error handling
 - **Memoized calculations** - Efficient filtering and sorting
 - **Loading states** - Proper loading indicators throughout
+
+### **Data Summary Features**
+- **Compact Grid Layout** - 2-3 cards per row for efficient space usage
+- **Smart Property Detection** - Automatically extracts measurement types from datastream names
+- **Gas Measurement Recognition** - Handles sensor patterns like "GGS05_01 Carbon Dioxide"
+- **Statistical Analysis** - Min, Max, Average, Latest values with trend indicators
+- **Visual Indicators** - Color-coded trends (green=up, red=down) and value highlighting
+
+## Recent Updates (2 August 2025)
+
+### Latest Features Implemented
+- **Enhanced Sensor Detail View** - Comprehensive sensor information with location coordinates and borehole references
+- **Location & Coordinates Display** - Shows sensor deployment locations with GPS coordinates in format [longitude, latitude]
+- **Borehole Reference Integration** - Automatic extraction and display of borehole reference codes (e.g., GGA01, BH123)
+- **Removed Auto-refresh** - Eliminated automatic data refreshing to prevent chart resets and improve user experience
+- **Interactive Charts** - Multi-datastream visualization with toggle controls and normalization (stable, no auto-reset)
+- **Smart Location Matching** - Fuzzy string matching between sensor names and location database
+- **Multiple Location Support** - Handles sensors deployed across multiple sites with expandable location lists
+
+### Technical Improvements
+- **Manual Refresh System** - User-controlled data updates via refresh button only
+- **Location Data Integration** - Fetches coordinate data for precise sensor positioning
+- **Borehole Reference Extraction** - Regex pattern matching for codes like GGA01, BH123, ABC12
+- **Enhanced Error Handling** - Better user feedback for API failures and loading states
+- **Performance Optimization** - Eliminated unnecessary API calls from auto-refresh
+  

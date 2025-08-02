@@ -221,31 +221,29 @@ export async function getDatastreamObservations(
   limit: number = 100
 ): Promise<BGSApiResponse<GetObservationsResponse>> {
   try {
-    // TODO: Replace with actual MCP call
-    // const response = await mcpClient.call('raspi-bgs-sensor-data', 'get_datastream_observations', { 
-    //   datastream_id: datastreamId, 
-    //   limit 
-    // });
+    // Fetch real observations from FROST API
+    const response = await frostApiCall(
+      `/Datastreams(${datastreamId})/Observations?$top=${limit}&$orderby=phenomenonTime%20desc`
+    );
     
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    const mockObservations: Observation[] = Array.from({ length: limit }, (_, i) => ({
-      observation_id: i + 1,
-      phenomenon_time: new Date(Date.now() - (i * 3600000)).toISOString(),
-      result_time: new Date(Date.now() - (i * 3600000)).toISOString(),
-      result: 15.5 + Math.random() * 10,
-      result_quality: "Good"
+    const observations: Observation[] = response.value.map((obs: any, index: number) => ({
+      observation_id: parseInt(obs['@iot.id']) || index + 1,
+      phenomenon_time: obs.phenomenonTime || new Date().toISOString(),
+      result_time: obs.resultTime || obs.phenomenonTime || new Date().toISOString(),
+      result: typeof obs.result === 'number' ? obs.result : parseFloat(obs.result) || 0,
+      result_quality: obs.resultQuality || "Unknown"
     }));
     
     return {
       success: true,
       data: {
-        observations: mockObservations,
+        observations,
         datastream_id: datastreamId,
-        total_count: mockObservations.length
+        total_count: observations.length
       }
     };
   } catch (error) {
+    console.error(`Error fetching observations for datastream ${datastreamId}:`, error);
     return {
       success: false,
       data: { observations: [], datastream_id: datastreamId, total_count: 0 },

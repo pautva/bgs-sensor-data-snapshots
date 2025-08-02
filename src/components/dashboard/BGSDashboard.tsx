@@ -76,7 +76,7 @@ export default function BGSDashboard() {
                 BGS Sensor Network Dashboard
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Real-time environmental monitoring
+                Environmental monitoring across BGS sites
               </p>
             </div>
             
