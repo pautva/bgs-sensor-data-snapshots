@@ -76,6 +76,33 @@
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.709 0.01 56.259);
+  
+  /* BGS Sensor status semantic colors */
+  --sensor-active: hsl(142 76% 36%);
+  --sensor-inactive: hsl(0 84% 60%);
+  --sensor-pending: hsl(48 96% 53%);
+  
+  /* BGS Sensor category colors */
+  --groundwater-monitoring: hsl(220 70% 50%);
+  --weather-station: hsl(260 60% 50%);
+  --soil-gas-monitoring: hsl(30 80% 50%);
+  --atmospheric-monitoring: hsl(200 70% 50%);
+  --dts-monitoring: hsl(280 60% 50%);
+  --dtc-monitoring: hsl(320 60% 50%);
+  --barometer: hsl(160 60% 50%);
+  
+  /* BGS Component spacing tokens */
+  --dashboard-padding: 1.5rem;
+  --card-gap: 1rem;
+  --table-cell-padding: 0.75rem;
+  
+  /* BGS Typography scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
 }
 
 .dark {
@@ -110,6 +137,20 @@
   --sidebar-accent-foreground: oklch(0.985 0.001 106.423);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.553 0.013 58.071);
+  
+  /* BGS Sensor status colors remain consistent in dark mode */
+  --sensor-active: hsl(142 76% 45%);
+  --sensor-inactive: hsl(0 84% 65%);
+  --sensor-pending: hsl(48 96% 60%);
+  
+  /* BGS Sensor category colors - slightly lighter for dark mode */
+  --groundwater-monitoring: hsl(220 70% 60%);
+  --weather-station: hsl(260 60% 65%);
+  --soil-gas-monitoring: hsl(30 80% 60%);
+  --atmospheric-monitoring: hsl(200 70% 60%);
+  --dts-monitoring: hsl(280 60% 65%);
+  --dtc-monitoring: hsl(320 60% 65%);
+  --barometer: hsl(160 60% 60%);
 }
 
 @layer base {
