@@ -287,7 +287,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
           
           <div className="flex gap-2">
             <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger size="lg" className="w-48">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -301,7 +301,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
             </Select>
             
             <Select value={selectedMeasurement} onValueChange={setSelectedMeasurement}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger size="lg" className="w-48">
                 <SelectValue placeholder="Measurement Type" />
               </SelectTrigger>
               <SelectContent>
