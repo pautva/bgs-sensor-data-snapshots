@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { SensorTable } from './SensorTable';
-import { SensorDetailModal } from './SensorDetailModal';
+import { SensorDetailSheet } from './SensorDetailSheet';
 import { SummaryCards } from './SummaryCards';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import {
 
 export default function BGSDashboard() {
   const [selectedSensor, setSelectedSensor] = useState<Sensor | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const {
     sensors,
@@ -34,12 +34,11 @@ export default function BGSDashboard() {
 
   const handleSensorSelect = (sensor: Sensor) => {
     setSelectedSensor(sensor);
-    setIsModalOpen(true);
+    setIsSheetOpen(true);
   };
 
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
+  const handleSheetClose = () => {
+    setIsSheetOpen(false);
     setSelectedSensor(null);
   };
 
@@ -172,11 +171,11 @@ export default function BGSDashboard() {
         </div>
       </footer>
 
-      {/* Sensor Detail Modal */}
-      <SensorDetailModal
+      {/* Sensor Detail Sheet */}
+      <SensorDetailSheet
         sensor={selectedSensor}
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
+        isOpen={isSheetOpen}
+        onClose={handleSheetClose}
       />
     </div>
   );
