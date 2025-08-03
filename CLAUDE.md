@@ -37,6 +37,7 @@ This is a minimal, professional BGS Sensor Network Dashboard built with Next.js 
 
 ### Git Repository Setup
 - **GitLab** - CI/CD deployment repository (`gitlab` remote)
+- **Dual Push** - `git push origin main && git push gitlab main` to sync both repos
 
 ## Architecture & Structure
 
