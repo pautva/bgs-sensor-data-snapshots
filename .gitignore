@@ -4,6 +4,7 @@
 .vscode
 .claude
 CLAUDE.md
+.mcp.json
 
 # dependencies
 /node_modules
