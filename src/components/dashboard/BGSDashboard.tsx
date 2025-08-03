@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { SensorTable } from './SensorTable';
 import { SensorDetailSheet } from './SensorDetailSheet';
 import { SummaryCards } from './SummaryCards';
-import { Toggle } from '@/components/ui/toggle';
+import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Sensor } from '@/types/bgs-sensor';
-import { useRealTimeData } from '@/hooks/useSensorData';
+import { useLocationAndStatsData } from '@/hooks/useSensorData';
 import { useProgressiveSensorData } from '@/hooks/useProgressiveSensorData';
 import { 
   RefreshCw, 
@@ -20,6 +20,7 @@ import {
 export default function BGSDashboard() {
   const [selectedSensor, setSelectedSensor] = useState<Sensor | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Use progressive loading for sensors to get datastream counts
   const {
@@ -31,7 +32,7 @@ export default function BGSDashboard() {
     refetch: refetchSensors
   } = useProgressiveSensorData();
 
-  // Still use the original hook for locations and stats
+  // Use optimized hook for locations and stats only (avoids duplicate sensor fetching)
   const {
     locations,
     stats,
@@ -40,10 +41,11 @@ export default function BGSDashboard() {
     errors,
     lastUpdated,
     refetchAll
-  } = useRealTimeData();
+  } = useLocationAndStatsData();
 
-  // Combine loading states
-  const isLoading = isLoadingBasic || isLoadingOther;
+  // Combine loading states - include manual refresh state
+  const isLoading = isLoadingBasic || isLoadingOther || isRefreshing;
+  
 
   const handleSensorSelect = (sensor: Sensor) => {
     setSelectedSensor(sensor);
@@ -54,6 +56,21 @@ export default function BGSDashboard() {
     setIsSheetOpen(false);
     setSelectedSensor(null);
   };
+
+  // Combined refresh function for all data sources
+  const handleRefreshAll = useCallback(async () => {
+    // Set manual refresh state for minimum visual feedback
+    setIsRefreshing(true);
+    
+    // Refresh both data sources
+    refetchSensors(); // Refresh progressive sensor data
+    refetchAll();     // Refresh locations and stats
+    
+    // Ensure minimum 1 second of loading feedback for user experience
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 1000);
+  }, [refetchSensors, refetchAll]);
 
   // Calculate summary metrics
   const totalSensors = sensors?.length || 0;
@@ -116,20 +133,20 @@ export default function BGSDashboard() {
                 <span>{formatLastUpdated()}</span>
               </div>
 
-              {/* Theme toggle */}
-              <ThemeToggle />
-
               {/* Refresh button */}
-              <Toggle
+              <Button
                 variant="outline"
                 size="sm"
-                pressed={false}
-                onPressedChange={refetchAll}
+                onClick={handleRefreshAll}
                 disabled={isLoading}
                 aria-label="Refresh data"
+                className="cursor-pointer"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Toggle>
+              </Button>
+
+              {/* Theme toggle */}
+              <ThemeToggle />
             </div>
           </div>
 

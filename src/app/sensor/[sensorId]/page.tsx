@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DatastreamChart } from "@/components/dashboard/DatastreamChart";
 import { DatastreamSummary } from "@/components/dashboard/DatastreamSummary";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { MiniMap } from "@/components/ui/mini-map";
 import { Sensor, Datastream, Observation, Location } from "@/types/bgs-sensor";
 import {
@@ -192,6 +193,7 @@ export default function SensorPage() {
     fetchChartData();
   }, [datastreams]);
 
+
   if (isLoadingSensor) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -253,12 +255,16 @@ export default function SensorPage() {
                   </a>
                 </Button>
               )}
+              
               <Link href="/">
                 <Button variant="ghost" size="sm" className="hover:cursor-pointer">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Dashboard
                 </Button>
               </Link>
+
+              {/* Theme toggle */}
+              <ThemeToggle />
             </div>
           </div>
         </div>
@@ -297,7 +303,7 @@ export default function SensorPage() {
                       Datastreams
                     </h4>
                     <Badge variant="secondary">
-                      {datastreams.length} active
+                      {Object.keys(chartObservations).length || datastreams.length} active
                     </Badge>
                   </div>
 
@@ -398,10 +404,11 @@ export default function SensorPage() {
           <div className="lg:col-span-2 flex flex-col gap-6">
             {/* Data Summary Section - Allow flexible height */}
             <div className="flex-shrink-0">
-              {datastreams.length > 0 && Object.keys(chartObservations).length > 0 && (
+              {datastreams.length > 0 && (
                 <DatastreamSummary
                   datastreams={datastreams.slice(0, 5)}
                   observations={chartObservations}
+                  isLoading={isLoadingChart}
                   className="h-full"
                 />
               )}
@@ -412,6 +419,7 @@ export default function SensorPage() {
               <DatastreamChart
                 datastreams={datastreams.slice(0, 5)}
                 observations={chartObservations}
+                isLoading={isLoadingChart}
                 className="h-full"
               />
             </div>

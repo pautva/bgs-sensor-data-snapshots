@@ -22,6 +22,7 @@ export function ThemeToggle() {
       variant="outline"
       size="sm"
       aria-label="Toggle dark mode"
+      className="cursor-pointer"
     >
       {isDark ? (
         <Moon className="h-4 w-4" />

@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Datastream, Observation } from '@/types/bgs-sensor';
 import { formatSensorValue } from '@/lib/bgs-api';
-import { TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, BarChart3, Loader2 } from 'lucide-react';
 
 interface DatastreamSummaryProps {
   datastreams: Datastream[];
   observations: Record<number, Observation[]>;
+  isLoading?: boolean;
   className?: string;
 }
 
@@ -22,7 +23,7 @@ interface StreamStats {
   trend: 'up' | 'down' | 'neutral';
 }
 
-export function DatastreamSummary({ datastreams, observations, className }: DatastreamSummaryProps) {
+export function DatastreamSummary({ datastreams, observations, isLoading = false, className }: DatastreamSummaryProps) {
   const streamStats = useMemo(() => {
     const stats: Record<number, StreamStats> = {};
     
@@ -106,7 +107,7 @@ export function DatastreamSummary({ datastreams, observations, className }: Data
     return words.find(word => word.length > 2) || words[0] || 'Measurement';
   };
 
-  if (!datastreams.length || !Object.keys(observations).length) {
+  if (!datastreams.length) {
     return null;
   }
 
@@ -137,12 +138,26 @@ export function DatastreamSummary({ datastreams, observations, className }: Data
           <BarChart3 className="h-4 w-4" />
           Data Summary
           <Badge variant="secondary" className="ml-auto">
-            {validDatastreams.length} streams
+            {validDatastreams.length} valid datastreams
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
-        <div className={`grid ${getGridColumns(validDatastreams.length)} gap-3 h-full`}>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8 h-full">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span className="ml-2 text-sm text-muted-foreground">
+              Loading datastream trends...
+            </span>
+          </div>
+        ) : !Object.keys(observations).length ? (
+          <div className="flex items-center justify-center py-8 h-full">
+            <span className="text-sm text-muted-foreground">
+              No observation data available
+            </span>
+          </div>
+        ) : (
+          <div className={`grid ${getGridColumns(validDatastreams.length)} gap-3 h-full`}>
           {datastreams.map(datastream => {
             const stats = streamStats[datastream.datastream_id];
             if (!stats || stats.count === 0) return null;
@@ -188,7 +203,8 @@ export function DatastreamSummary({ datastreams, observations, className }: Data
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -63,7 +63,6 @@ export function MiniMap({ latitude, longitude, className = "" }: MiniMapProps) {
       const loadMap = async () => {
         try {
           const L = await import('leaflet');
-          await import('leaflet/dist/leaflet.css');
 
           if (!isMounted || !mapRef.current) return;
 

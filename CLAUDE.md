@@ -101,7 +101,7 @@ src/
 - **Sensor Types** - Groundwater Monitoring, Weather Station, Soil Gas Monitoring, etc.
 - **Gas Measurements** - Carbon Dioxide, Methane, Oxygen from GasClam probes
 - **Sites Covered** - UKGEOS Glasgow Observatory, BGS Cardiff, UKGEOS Cheshire Observatory, Wallingford
-- **Manual Updates** - User-controlled data refresh via refresh button
+- **Manual Updates** - User-controlled data refresh via refresh button with visual feedback
 - **Borehole References** - Automatic extraction from sensor names (GGA01, BH123, etc.)
 
 ### Current Implementation
@@ -116,7 +116,7 @@ src/
    - **Borehole Reference** - Automatic extraction from sensor names (e.g., GGA01)
    - **Multiple Location Support** - Expandable list for sensors with multiple deployment sites
    - **Stable Charts** - No auto-refresh to prevent chart resets
-4. **Manual Refresh System** - User-controlled data updates via refresh button only
+4. **Optimized Refresh System** - User-controlled data updates with visual feedback and coordinated dual-hook refresh
 5. **Dark Mode Toggle** - System-aware theme switching in navbar with persistent preferences
 6. **Datastream Visualization** - Interactive line charts showing latest 50 readings per datastream
 7. **Data Summary Cards** - Compact statistics showing min/max/avg/latest values with trend indicators
@@ -213,7 +213,30 @@ src/
 - **Statistical Analysis** - Min, Max, Average, Latest values with trend indicators
 - **Visual Indicators** - Color-coded trends (green=up, red=down) and value highlighting
 
-## Recent Updates (2 August 2025)
+## Recent Updates (3 August 2025)
+
+### Refresh Button Fix & Performance Optimizations
+
+#### **Fixed Refresh Button Functionality**
+- **Issue Resolution** - Fixed refresh button that wasn't showing visual feedback due to fast API responses
+- **Dual Hook Integration** - Properly coordinated refresh between `useProgressiveSensorData` and `useLocationAndStatsData` hooks
+- **Visual Feedback** - Added minimum 1-second loading state to ensure users see the refresh action
+- **Component Migration** - Changed from `Toggle` to `Button` component for proper refresh action semantics
+- **Loading State Management** - Implemented `isRefreshing` state for guaranteed visual feedback during refresh
+
+#### **API Call Optimizations**
+- **Eliminated Duplicate Fetching** - Removed duplicate sensor API calls by creating `useLocationAndStatsData` hook
+- **Improved Caching Strategy** - Maintained existing 5-minute cache for sensors, 2-minute for datastreams, 1-minute for observations
+- **Reduced Network Load** - Dashboard now makes 33% fewer API calls by avoiding redundant sensor fetching
+- **Smart Hook Architecture** - Separated concerns between sensor data and location/stats data fetching
+
+#### **Code Cleanup & Maintenance**
+- **Debug Logging Removal** - Cleaned up all temporary debug console statements
+- **Import Optimization** - Removed unused imports and dependencies
+- **Component Simplification** - Streamlined refresh button implementation
+- **Leaflet CSS Fix** - Fixed map boundary issues by moving CSS import to global styles (globals.css)
+
+## Previous Updates (2 August 2025)
 
 ### Major Features Implemented
 
@@ -304,6 +327,7 @@ src/
 
 ### **Map Component Implementation**
 - **MiniMap Component** (`src/components/ui/mini-map.tsx`) - Interactive Leaflet maps with SSR support
+- **Global CSS Import** - Leaflet CSS imported in `globals.css` for proper map boundaries and styling
 - **Aggressive Cleanup** - Removes Leaflet's internal `_leaflet_id` property to prevent initialization conflicts
 - **Mounting Guards** - Uses `isMounted` flag to prevent race conditions during component lifecycle
 - **Delayed Initialization** - 50ms delay ensures complete cleanup before new map creation

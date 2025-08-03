@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Toggle } from '@/components/ui/toggle';
 import { Datastream, Observation } from '@/types/bgs-sensor';
-import { TrendingUp, BarChart3 } from 'lucide-react';
+import { TrendingUp, BarChart3, Loader2 } from 'lucide-react';
 
 interface DatastreamChartProps {
   datastreams: Datastream[];
   observations: Record<number, Observation[]>;
+  isLoading?: boolean;
   className?: string;
 }
 
@@ -23,7 +24,7 @@ const CHART_COLORS = [
   '#ef4444'  // red-500
 ];
 
-export function DatastreamChart({ datastreams, observations, className }: DatastreamChartProps) {
+export function DatastreamChart({ datastreams, observations, isLoading = false, className }: DatastreamChartProps) {
   const [isNormalised, setIsNormalised] = useState(true);
   const [visibleDatastreams, setVisibleDatastreams] = useState<Set<number>>(
     () => new Set(datastreams.map(ds => ds.datastream_id))
@@ -149,7 +150,7 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
     );
   }
 
-  if (!chartData.length) {
+  if (isLoading || !chartData.length) {
     return (
       <Card className={className}>
         <CardHeader>
@@ -162,9 +163,18 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Loading chart data...
-          </p>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="ml-2 text-sm text-muted-foreground">
+                Loading chart data...
+              </span>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No chart data available
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -180,9 +190,9 @@ export function DatastreamChart({ datastreams, observations, className }: Datast
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             <CardTitle className="text-lg">Datastream Trends</CardTitle>
-            <Badge variant="secondary">
+            {/* <Badge variant="secondary">
               {datastreams.length} datastreams
-            </Badge>
+            </Badge> */}
           </div>
           <Toggle
             pressed={isNormalised}

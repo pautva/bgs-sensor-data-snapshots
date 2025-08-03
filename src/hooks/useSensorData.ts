@@ -183,3 +183,35 @@ export function useRealTimeData() {
     refetchAll
   };
 }
+
+// Optimized hook for dashboard that only fetches locations and stats (not sensors)
+export function useLocationAndStatsData() {
+  const locationData = useLocationData(false, 60000);
+  const statsData = useDashboardStats(false, 45000);
+
+  const isLoading = locationData.isLoading || statsData.isLoading;
+  const hasError = !!(locationData.error || statsData.error);
+  const errors = [locationData.error, statsData.error].filter(Boolean);
+
+  const refetchAll = useCallback(() => {
+    locationData.refetch();
+    statsData.refetch();
+  }, [locationData.refetch, statsData.refetch]);
+
+  const lastUpdated = [
+    locationData.lastUpdated,
+    statsData.lastUpdated
+  ]
+    .filter(date => date !== null)
+    .sort((a, b) => (b as Date).getTime() - (a as Date).getTime())[0] || null;
+
+  return {
+    locations: locationData.locations,
+    stats: statsData.stats,
+    isLoading,
+    hasError,
+    errors,
+    lastUpdated,
+    refetchAll
+  };
+}

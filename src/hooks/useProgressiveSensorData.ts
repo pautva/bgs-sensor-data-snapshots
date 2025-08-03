@@ -66,6 +66,9 @@ export function useProgressiveSensorData(): ProgressiveSensorData {
 
   const refetch = useCallback(() => {
     setIsComplete(false);
+    setIsLoadingBasic(true);  // Set loading state immediately
+    setIsLoadingCounts(false);
+    setError(null);
     fetchBasicSensors();
   }, [fetchBasicSensors]);
 

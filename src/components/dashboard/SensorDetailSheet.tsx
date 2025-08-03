@@ -255,7 +255,7 @@ export function SensorDetailSheet({
                     Borehole Reference: {sensor.name.match(/[A-Z]{2,3}\d{2,3}/)?.[0] || 'N/A'}
                   </Badge>
                   <Badge variant="secondary">
-                    {sensor.total_datastreams} datastreams
+                    {Object.keys(chartObservations).length || datastreams.length} active datastreams
                   </Badge>
                 </div>
               </CardTitle>
@@ -355,18 +355,19 @@ export function SensorDetailSheet({
           </Card>
 
           {/* Data Summary */}
-          {datastreams.length > 0 &&
-            Object.keys(chartObservations).length > 0 && (
-              <DatastreamSummary
-                datastreams={datastreams.slice(0, 5)}
-                observations={chartObservations}
-              />
-            )}
+          {datastreams.length > 0 && (
+            <DatastreamSummary
+              datastreams={datastreams.slice(0, 5)}
+              observations={chartObservations}
+              isLoading={isLoadingChart}
+            />
+          )}
 
           {/* Datastream Chart */}
           <DatastreamChart
             datastreams={datastreams.slice(0, 5)}
             observations={chartObservations}
+            isLoading={isLoadingChart}
           />
 
           {/* Datastreams */}
