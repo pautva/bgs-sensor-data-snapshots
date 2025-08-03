@@ -14,6 +14,41 @@ This is a minimal, professional BGS Sensor Network Dashboard built with Next.js 
 - `npm run start` - Start the production server
 - `npm run lint` - Run ESLint for code quality checks
 
+## Docker & Kubernetes Deployment
+
+### Production Deployment
+- **GitLab CI/CD Pipeline** - Automated build, security scan, and deployment
+- **Container Registry** - Images built and stored in GitLab container registry
+- **Kubernetes Deployment** - Automated deployment to BGS internal clusters
+- **Security Scanning** - Container vulnerability and Sonar code quality scans
+
+### Docker Configuration
+- **Multi-stage Dockerfile** - Optimized for production with minimal image size
+- **Next.js Standalone Output** - Self-contained deployment using `output: 'standalone'`
+- **Security Hardened** - Runs as non-root user (nextjs:nodejs, UID/GID 1001)
+- **Production Ready** - Node.js 18 Alpine, proper environment variables
+
+### Deployment Environments
+- **Development** - All branches deploy to isolated namespaces in dev cluster
+- **Auto-generated URLs** - `http://<project>-<id>-<branch>.kube-idev.bgslcdevops.test/`
+- **Environment Cleanup** - Dev environments removed after 1 month or branch deletion
+- **Protected Environments** - Tags can deploy to staging-dmz and production-dmz (requires credentials)
+
+### GitLab Configuration
+```yaml
+variables:
+  CONTAINER_PORT: "3000"       # Next.js application port
+  SKIP_CONTAINER_SCAN: "false" # Enable container security scanning
+  SKIP_SONAR_SCAN: "false"     # Enable code quality scanning
+```
+
+### Kubernetes Resources
+- **CPU Requests/Limits** - 10m requests, 1 core limits
+- **Memory Requests/Limits** - 32Mi requests, 1Gi limits
+- **Ephemeral Storage** - 10Mi requests, 128Mi limits
+- **Network Policy** - Configured for secure cluster communication
+- **Ingress** - NGINX ingress controller with SSL redirect disabled
+
 ## Architecture & Structure
 
 ### Framework Stack
