@@ -27,6 +27,7 @@ This is a minimal, professional BGS Sensor Network Dashboard built with Next.js 
 - **Next.js Standalone Output** - Self-contained deployment using `output: 'standalone'`
 - **Security Hardened** - Runs as non-root user (nextjs:nodejs, UID/GID 1001)
 - **Production Ready** - Node.js 18 Alpine, proper environment variables
+- **Build Dependencies** - Uses `npm ci` (not `--only=production`) to install devDependencies needed for build
 
 ### Deployment Environments
 - **Development** - All branches deploy to isolated namespaces in dev cluster
@@ -34,20 +35,8 @@ This is a minimal, professional BGS Sensor Network Dashboard built with Next.js 
 - **Environment Cleanup** - Dev environments removed after 1 month or branch deletion
 - **Protected Environments** - Tags can deploy to staging-dmz and production-dmz (requires credentials)
 
-### GitLab Configuration
-```yaml
-variables:
-  CONTAINER_PORT: "3000"       # Next.js application port
-  SKIP_CONTAINER_SCAN: "false" # Enable container security scanning
-  SKIP_SONAR_SCAN: "false"     # Enable code quality scanning
-```
-
-### Kubernetes Resources
-- **CPU Requests/Limits** - 10m requests, 1 core limits
-- **Memory Requests/Limits** - 32Mi requests, 1Gi limits
-- **Ephemeral Storage** - 10Mi requests, 128Mi limits
-- **Network Policy** - Configured for secure cluster communication
-- **Ingress** - NGINX ingress controller with SSL redirect disabled
+### Git Repository Setup
+- **GitLab** - CI/CD deployment repository (`gitlab` remote)
 
 ## Architecture & Structure
 
