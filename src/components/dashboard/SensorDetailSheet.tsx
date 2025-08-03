@@ -209,12 +209,12 @@ export function SensorDetailSheet({
                 <Activity className="h-5 w-5" />
                 {sensor.name}
               </SheetTitle>
-              {observationStartDate && observationEndDate && (
+              {/* {observationStartDate && observationEndDate && (
                 <Badge variant="secondary" className="text-xs">
                   <Calendar className="h-3 w-3 mr-1" />
                   {observationStartDate} to {observationEndDate}
                 </Badge>
-              )}
+              )} */}
             </div>
             <div className="flex items-center gap-2">
               <Link href={`/sensor/${sensor.id}`}>
