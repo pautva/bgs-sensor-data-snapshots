@@ -24,6 +24,7 @@ include:
 variables:
   INTERNAL_DOCKER_IMAGE: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
   DMZ_DOCKER_IMAGE: ${DMZ_REGISTRY}/${CI_PROJECT_NAME}:${CI_COMMIT_REF_SLUG}
+  CONTAINER_PORT: "3000"       # Next.js runs on port 3000
   SKIP_CONTAINER_SCAN: "false" # to skip the container-scan stage set it "true" 
   SKIP_SONAR_SCAN: "false"     # to skip the sonar-scan stage set it "true"
   # Placeholder for dynamic build arguments
