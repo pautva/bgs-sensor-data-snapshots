@@ -1,0 +1,70 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: ${KUBE_NAMESPACE}
+  annotations:
+    app.gitlab.com/app: ${CI_PROJECT_PATH_SLUG}
+    app.gitlab.com/env: ${CI_ENVIRONMENT_SLUG}
+    deploy-timestamp: "${DEPLOY_TIMESTAMP}"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: ${KUBE_NAMESPACE}
+  template:
+    metadata:
+      labels:
+        app: ${KUBE_NAMESPACE}
+      annotations:
+        deploy-timestamp: "${DEPLOY_TIMESTAMP}"
+        app.gitlab.com/app: ${CI_PROJECT_PATH_SLUG}
+        app.gitlab.com/env: ${CI_ENVIRONMENT_SLUG}  
+    spec:
+      imagePullSecrets:
+      - name: docker-secret
+      automountServiceAccountToken: false # Disable default service account token for improved security.
+                                          # Prevents unnecessary access to the Kubernetes API.
+      containers:
+      - name: ${KUBE_NAMESPACE}
+        image: "${DEPLOY_IMAGE}"
+        imagePullPolicy: Always
+        ports:
+        - containerPort: ${CONTAINER_PORT}
+        resources:
+          # Define resource requests and limits:
+          # - Requests: Minimum guaranteed resources that Kubernetes will allocate for the container.
+          #   Ensures stable performance and helps schedule the Pod on a suitable node.
+          # - Limits: Maximum resources the container can use, preventing it from disrupting other workloads.
+          #   Useful for controlling resource overuse.
+          #
+          # - CPU:
+          #   - Requests: 10m (0.01 of a CPU core) ensures the Pod is always scheduled.
+          #   - Limits: 1 core allows the container to scale up CPU usage when needed.
+          #
+          # - Memory:
+          #   - Requests: 32Mi ensures enough memory is reserved for basic operations.
+          #   - Limits: 1Gi caps the memory usage to avoid overconsumption.
+          #
+          # - Ephemeral Storage:
+          #   - Requests: 10Mi allocates temporary local storage for the container (e.g., /tmp).
+          #   - Limits: 128Mi prevents the container from overusing local storage resources.
+          #   - Ephemeral storage is temporary and tied to the lifecycle of the Pod:
+          #     - It is created locally on the node where the Pod is scheduled.
+          #     - It is removed automatically when the Pod is deleted or restarted.
+          #   - This storage is independent of any persistent volumes (PVCs) provisioned via NFS.
+          #     - PVCs provisioned by the NFS storage class are persistent and unaffected by ephemeral storage limits.
+          requests:
+            cpu: 10m
+            memory: 32Mi
+            ephemeral-storage: 10Mi
+          limits:
+            cpu: 1
+            memory: 1Gi
+            ephemeral-storage: 128Mi
+        #env:
+        #- name: ENVIRONMENT_VAR_FOR_INSIDE_CONTAINER
+        #  value: "${VALUE_IN_GITLAB_CI}"
+        #- name: ANOTHER_ENVIRONMENT_VAR_FOR_INSIDE_CONTAINER
+        #  value: "${ANOTHER_VALUE_IN_GITLAB_CI}

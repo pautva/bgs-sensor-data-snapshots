@@ -1,0 +1,60 @@
+# GITLAB CI/CD Vars set auto configured by GitLab for dev-internal - But you must override for protected environments
+# KUBE_URL (environment scoped)
+# KUBE_TOKEN (environment scoped)
+# KUBE_NAMESPACE (environment scoped) - <project_name>-<project_id>-<environment>
+# APP_HOSTNAME (environment scoped)
+# CONTAINER_PORT (defaults to port "80")
+
+# Imports
+include:
+  - project: 'devops/ci-security-scan'
+    ref: main
+    file: 'container-scan.yml'
+  - project: 'devops/ci-security-scan'
+    ref: main
+    file: 'sonar-scanning/sonar-scan.yml'
+  - project: 'devops/ci-kube-deploy'
+    ref: main
+    file: 'docker-build-push.yml'
+  - project: 'devops/ci-kube-deploy'
+    ref: main
+    file: 'kube-deploy.yml'
+
+# Variables
+variables:
+  INTERNAL_DOCKER_IMAGE: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
+  DMZ_DOCKER_IMAGE: ${DMZ_REGISTRY}/${CI_PROJECT_NAME}:${CI_COMMIT_REF_SLUG}
+  SKIP_CONTAINER_SCAN: "false" # to skip the container-scan stage set it "true" 
+  SKIP_SONAR_SCAN: "false"     # to skip the sonar-scan stage set it "true"
+  # Placeholder for dynamic build arguments
+  # Uncomment and define values as needed, names kept in BUILD_ARG_NAME{i}, and values in BUILD_ARG_VALUE{i}.
+  # BUILD_ARG_NAME1: "ARG1"
+  # BUILD_ARG_VALUE1: "Value1"
+  # BUILD_ARG_NAME2: "ARG2"
+  # BUILD_ARG_VALUE2: "Value2"
+
+# CI Stages
+stages:
+  - build
+  - container-scan
+  - sonar-scan
+  - deploy
+
+# Avoid duplicate pipelines running for merge requests
+# https://docs.gitlab.com/ee/ci/yaml/#differences-between-rules-and-onlyexcept
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH
+
+container-scan:
+  allow_failure: false
+  needs: ["build docker image"]
+  rules:
+    - if: '$SKIP_CONTAINER_SCAN != "true"'
+
+sonar-scan:
+  allow_failure: false
+  needs: ["build docker image"]
+  rules:
+    - if: '$SKIP_SONAR_SCAN != "true"'
