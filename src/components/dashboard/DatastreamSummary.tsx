@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Datastream, Observation } from '@/types/bgs-sensor';
-import { formatSensorValue } from '@/lib/bgs-api';
+import { formatSensorValue, processObservationValues } from '@/lib/bgs-api';
 import { TrendingUp, TrendingDown, Minus, BarChart3, Loader2 } from 'lucide-react';
 
 interface DatastreamSummaryProps {
@@ -37,9 +37,8 @@ export function DatastreamSummary({ datastreams, observations, isLoading = false
         return;
       }
       
-      const values = datastreamObs
-        .map(obs => typeof obs.result === 'number' ? obs.result : parseFloat(obs.result) || 0)
-        .filter(val => !isNaN(val));
+      // Use standardized scientific data validation
+      const values = processObservationValues(datastreamObs);
       
       if (values.length === 0) {
         stats[datastream.datastream_id] = {
@@ -51,7 +50,8 @@ export function DatastreamSummary({ datastreams, observations, isLoading = false
       const min = Math.min(...values);
       const max = Math.max(...values);
       const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
-      const latest = values[0]; // First value (most recent due to desc order)
+      // Use the most recent validated value - first in the processed array
+      const latest = values[0];
       const count = values.length;
       
       // Calculate trend from last few readings

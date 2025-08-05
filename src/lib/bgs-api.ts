@@ -17,6 +17,47 @@ import {
   SiteStats
 } from '@/types/bgs-sensor';
 
+/**
+ * Scientific data validation function for sensor observations
+ * Ensures consistent data validation across chart and summary components
+ * @param result - The observation result value
+ * @returns Validated number or null if invalid
+ */
+export function validateSensorValue(result: any): number | null {
+  // Handle numeric values
+  if (typeof result === 'number') {
+    // Reject NaN, Infinity, and -Infinity for scientific integrity
+    if (!isNaN(result) && isFinite(result)) {
+      return result;
+    }
+    return null;
+  }
+  
+  // Handle string values that might be numeric
+  if (typeof result === 'string') {
+    const parsed = parseFloat(result);
+    if (!isNaN(parsed) && isFinite(parsed)) {
+      return parsed;
+    }
+    return null;
+  }
+  
+  // Reject all other types
+  return null;
+}
+
+/**
+ * Process observation data with scientific validation
+ * Ensures identical data processing between components
+ * @param observations - Array of observation objects
+ * @returns Array of validated numeric values
+ */
+export function processObservationValues(observations: Observation[]): number[] {
+  return observations
+    .map(obs => validateSensorValue(obs.result))
+    .filter((val): val is number => val !== null);
+}
+
 // FROST API base URL
 const FROST_API_BASE = 'https://sensors.bgs.ac.uk/FROST-Server/v1.1';
 

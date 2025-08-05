@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Toggle } from '@/components/ui/toggle';
 import { Datastream, Observation } from '@/types/bgs-sensor';
+import { validateSensorValue } from '@/lib/bgs-api';
 import { TrendingUp, BarChart3, Loader2 } from 'lucide-react';
 
 interface DatastreamChartProps {
@@ -103,9 +104,10 @@ export function DatastreamChart({
         }
         
         const dataPoint = allDataPoints.get(timestamp);
-        // Scientific data validation: only include valid numerical results
-        if (typeof obs.result === 'number' && !isNaN(obs.result) && isFinite(obs.result)) {
-          dataPoint[`datastream_${datastream.datastream_id}`] = obs.result;
+        // Use standardized scientific data validation
+        const validatedValue = validateSensorValue(obs.result);
+        if (validatedValue !== null) {
+          dataPoint[`datastream_${datastream.datastream_id}`] = validatedValue;
         }
       });
     });
@@ -123,7 +125,7 @@ export function DatastreamChart({
         const dataKey = `datastream_${datastream.datastream_id}`;
         const values = rawData
           .map(point => point[dataKey])
-          .filter(val => typeof val === 'number' && !isNaN(val));
+          .filter(val => validateSensorValue(val) !== null);
         
         if (values.length > 0) {
           const min = Math.min(...values);

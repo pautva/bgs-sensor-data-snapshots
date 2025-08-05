@@ -128,6 +128,7 @@ src/
 - **Sites Covered** - UKGEOS Glasgow Observatory, BGS Cardiff, UKGEOS Cheshire Observatory, Wallingford
 - **Manual Updates** - User-controlled data refresh via refresh button with visual feedback
 - **Borehole References** - Automatic extraction from sensor names (GGA01, BH123, etc.)
+- **Scientific Data Validation** - Standardized validation functions ensure data integrity across all components
 
 ### Current Implementation
 1. **Summary Cards** - Key metrics overview (sensors, locations, sites, datastreams)
@@ -239,6 +240,20 @@ src/
 - **Visual Indicators** - Color-coded trends (green=up, red=down) and value highlighting
 
 ## Recent Updates (5 August 2025)
+
+### Scientific Data Validation & Calculation Accuracy Fix
+
+#### **Standardized Data Processing**
+- **Scientific Validation Functions** - Added `validateSensorValue()` and `processObservationValues()` in `src/lib/bgs-api.ts`
+- **Strict Data Integrity** - Rejects `NaN`, `Infinity`, and `-Infinity` values for scientific accuracy
+- **Consistent Processing** - Both DatastreamChart and DatastreamSummary use identical validation logic
+- **Research-Grade Accuracy** - Ensures calculations match between chart display and statistical summaries
+
+#### **Enhanced Data Reliability**
+- **Unified Validation Pipeline** - Single source of truth for data validation across all components
+- **Geological Research Ready** - Data processing meets scientific standards for BGS researchers
+- **Calculation Consistency** - Chart values and summary statistics now perfectly match
+- **Type Safety** - Enhanced TypeScript validation for sensor observation data
 
 ### Advanced Date Range Selection & Interactive Chart Features
 
