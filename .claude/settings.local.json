@@ -5,12 +5,17 @@
       "Bash(claude mcp)",
       "Bash(claude mcp:*)",
       "Bash(npx shadcn@latest add:*)",
-      "WebFetch(domain:sensors.bgs.ac.uk)"
+      "WebFetch(domain:sensors.bgs.ac.uk)",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_snapshot"
     ],
     "deny": []
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "shadcn-ui"
+    "playwright",
+    "Context7"
   ]
 }
