@@ -9,13 +9,14 @@ import { DatastreamChart } from "@/components/dashboard/DatastreamChart";
 import { DatastreamSummary } from "@/components/dashboard/DatastreamSummary";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MiniMap } from "@/components/ui/mini-map";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Sensor, Datastream, Observation, Location } from "@/types/bgs-sensor";
 import {
   getSensorDatastreams,
   getDatastreamObservations,
+  getDatastreamDateRange,
   listLocations,
 } from "@/lib/bgs-api";
-import { extractObservationDateRange } from "@/lib/date-utils";
 import { findMatchingLocation } from "@/lib/location-utils";
 import {
   Activity,
@@ -25,6 +26,7 @@ import {
   Loader2,
   ArrowLeft,
   Calendar,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -71,12 +73,52 @@ export default function SensorPage() {
     Record<number, Observation[]>
   >({});
   const [sensorLocation, setSensorLocation] = useState<Location | null>(null);
-  const [observationStartDate, setObservationStartDate] = useState<string | null>(null);
-  const [observationEndDate, setObservationEndDate] = useState<string | null>(null);
+  
+  // Date range selection state
+  const [selectedStartDate, setSelectedStartDate] = useState<Date | undefined>(undefined);
+  const [selectedEndDate, setSelectedEndDate] = useState<Date | undefined>(undefined);
+  const [availableStartDate, setAvailableStartDate] = useState<Date | undefined>(undefined);
+  const [availableEndDate, setAvailableEndDate] = useState<Date | undefined>(undefined);
+  const [isLoadingDateRange, setIsLoadingDateRange] = useState(false);
+  const [totalObservations, setTotalObservations] = useState(0);
+  const [observationLimit, setObservationLimit] = useState(50);
+  const [isDataLimited, setIsDataLimited] = useState(false);
+  
   const [isLoadingSensor, setIsLoadingSensor] = useState(true);
   const [isLoadingDatastreams, setIsLoadingDatastreams] = useState(false);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Reset function to return to initial state
+  const handleReset = () => {
+    // Reset date selections
+    setSelectedStartDate(undefined);
+    setSelectedEndDate(undefined);
+    
+    // Clear chart data first
+    setChartObservations({});
+    setTotalObservations(0);
+    setIsDataLimited(false);
+    
+    // Force re-calculation of default dates if we have available dates
+    if (availableStartDate && availableEndDate) {
+      // Validate available dates for scientific integrity
+      if (availableStartDate <= availableEndDate) {
+        // Default to last 30 days from the end date, or available range if shorter
+        const thirtyDaysFromEnd = new Date(availableEndDate);
+        thirtyDaysFromEnd.setDate(thirtyDaysFromEnd.getDate() - 30);
+        
+        // Ensure the calculated start date isn't before the available start date
+        const defaultStartDate = thirtyDaysFromEnd < availableStartDate ? availableStartDate : thirtyDaysFromEnd;
+        
+        // Final validation: ensure start date is not after end date
+        if (defaultStartDate <= availableEndDate) {
+          setSelectedStartDate(defaultStartDate);
+          setSelectedEndDate(availableEndDate);
+        }
+      }
+    }
+  };
 
   // Fetch sensor details on component mount
   useEffect(() => {
@@ -147,6 +189,51 @@ export default function SensorPage() {
     fetchLocation();
   }, [sensor?.id]); // Only depend on sensor.id, not the entire sensor object
 
+  // Fetch available date range when datastreams are loaded
+  useEffect(() => {
+    if (!datastreams.length) return;
+
+    const fetchDateRange = async () => {
+      try {
+        setIsLoadingDateRange(true);
+        
+        // Get date range from the first datastream (assuming all datastreams have similar ranges)
+        const dateRange = await getDatastreamDateRange(datastreams[0].datastream_id);
+        
+        if (dateRange.startDate && dateRange.endDate) {
+          const startDate = new Date(dateRange.startDate);
+          const endDate = new Date(dateRange.endDate);
+          
+          setAvailableStartDate(startDate);
+          setAvailableEndDate(endDate);
+          
+          // Set default selected dates if not already set
+          if (!selectedStartDate || !selectedEndDate) {
+            // Default to last 30 days from the end date, or available range if shorter
+            const thirtyDaysFromEnd = new Date(endDate);
+            thirtyDaysFromEnd.setDate(thirtyDaysFromEnd.getDate() - 30);
+            
+            // Ensure the calculated start date isn't before the available start date
+            const defaultStartDate = thirtyDaysFromEnd < startDate ? startDate : thirtyDaysFromEnd;
+            
+            if (!selectedStartDate) {
+              setSelectedStartDate(defaultStartDate);
+            }
+            if (!selectedEndDate) {
+              setSelectedEndDate(endDate);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching date range:", err);
+      } finally {
+        setIsLoadingDateRange(false);
+      }
+    };
+
+    fetchDateRange();
+  }, [datastreams]);
+
   // Fetch chart observations for datastreams
   useEffect(() => {
     if (!datastreams.length) {
@@ -154,35 +241,75 @@ export default function SensorPage() {
       return;
     }
 
+    // Wait for dates to be set before fetching chart data
+    if (!selectedStartDate || !selectedEndDate) {
+      return;
+    }
+
     const fetchChartData = async () => {
       try {
         setIsLoadingChart(true);
+        
+        // Convert selected dates to strings for API call
+        const startDateStr = selectedStartDate ? selectedStartDate.toISOString().split('T')[0] : undefined;
+        const endDateStr = selectedEndDate ? selectedEndDate.toISOString().split('T')[0] : undefined;
+        
+        // Calculate appropriate limit based on date range
+        let limit = 50; // default for recent data
+        if (selectedStartDate && selectedEndDate) {
+          const daysDiff = Math.ceil((selectedEndDate.getTime() - selectedStartDate.getTime()) / (1000 * 60 * 60 * 24));
+          // Balance between scientific accuracy and performance
+          // For initial load (30 days), use moderate limits for fast display
+          // For longer ranges, increase limits to ensure completeness
+          if (daysDiff <= 7) {
+            // 1 week: up to 24 readings/day (hourly)
+            limit = Math.min(daysDiff * 24, 1000);
+          } else if (daysDiff <= 30) {
+            // 1 month: up to 8 readings/day (3-hourly) for performance
+            limit = Math.min(daysDiff * 8, 1000);
+          } else {
+            // Longer ranges: up to 4 readings/day (6-hourly)
+            limit = Math.min(daysDiff * 4, 2000);
+          }
+        }
+        setObservationLimit(limit);
+        
         const observationsPromises = datastreams
           .slice(0, 5)
           .map(async (datastream) => {
             const response = await getDatastreamObservations(
               datastream.datastream_id,
-              50
+              limit,
+              startDateStr,
+              endDateStr
             );
             return {
               datastreamId: datastream.datastream_id,
               observations: response.success ? response.data.observations : [],
+              isLimited: response.success ? response.data.isLimited : false,
             };
           });
 
         const results = await Promise.all(observationsPromises);
         const chartData: Record<number, Observation[]> = {};
+        let totalObs = 0;
+        let isLimited = false;
 
-        results.forEach(({ datastreamId, observations }) => {
+        results.forEach(({ datastreamId, observations, isLimited: datastreamLimited }) => {
           chartData[datastreamId] = observations;
+          totalObs += observations.length;
+          // Use the accurate information from the API
+          if (datastreamLimited) {
+            isLimited = true;
+          }
         });
 
         setChartObservations(chartData);
+        setTotalObservations(totalObs);
+        // Store whether any datastream was actually limited
+        setIsDataLimited(isLimited);
 
-        // Extract date range from observations
-        const { startDate, endDate } = extractObservationDateRange(chartData);
-        setObservationStartDate(startDate);
-        setObservationEndDate(endDate);
+        // Note: We don't need to extract observation date range since we already have selected dates
       } catch (err) {
         console.error("Error fetching chart data:", err);
       } finally {
@@ -191,7 +318,7 @@ export default function SensorPage() {
     };
 
     fetchChartData();
-  }, [datastreams]);
+  }, [datastreams, selectedStartDate, selectedEndDate]);
 
 
   if (isLoadingSensor) {
@@ -234,10 +361,10 @@ export default function SensorPage() {
                 <Activity className="h-6 w-6" />
                 <h1 className="text-2xl font-bold">{sensor.name}</h1>
               </div>
-              {observationStartDate && observationEndDate && (
+              {selectedStartDate && selectedEndDate && (
                 <Badge variant="secondary" className="text-xs">
                   <Calendar className="h-3 w-3 mr-1" />
-                  {observationStartDate} to {observationEndDate}
+                  {selectedStartDate.toISOString().split('T')[0]} to {selectedEndDate.toISOString().split('T')[0]}
                 </Badge>
               )}
             </div>
@@ -262,6 +389,18 @@ export default function SensorPage() {
                   Back to Dashboard
                 </Button>
               </Link>
+
+              {/* Reset button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}
+                disabled={isLoadingChart || isLoadingDateRange}
+                aria-label="Reset to default view"
+                className="cursor-pointer"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoadingChart || isLoadingDateRange ? 'animate-spin' : ''}`} />
+              </Button>
 
               {/* Theme toggle */}
               <ThemeToggle />
@@ -327,18 +466,30 @@ export default function SensorPage() {
                     <h4 className="font-medium text-sm text-muted-foreground mb-1">
                       Start Date
                     </h4>
-                    <Badge variant="outline">
-                      {observationStartDate || '2021-09-01'}
-                    </Badge>
+                    <DatePicker
+                      date={selectedStartDate}
+                      onDateChange={setSelectedStartDate}
+                      placeholder="Select start date"
+                      disabled={isLoadingDateRange}
+                      fromDate={availableStartDate}
+                      toDate={selectedEndDate || availableEndDate}
+                      className="h-8 text-xs"
+                    />
                   </div>
 
                   <div>
                     <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                      Last Reading
+                      End Date
                     </h4>
-                    <Badge variant="outline">
-                      {observationEndDate || 'N/A'}
-                    </Badge>
+                    <DatePicker
+                      date={selectedEndDate}
+                      onDateChange={setSelectedEndDate}
+                      placeholder="Select end date"
+                      disabled={isLoadingDateRange}
+                      fromDate={selectedStartDate || availableStartDate}
+                      toDate={availableEndDate}
+                      className="h-8 text-xs"
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -421,6 +572,11 @@ export default function SensorPage() {
                 observations={chartObservations}
                 isLoading={isLoadingChart}
                 className="h-full"
+                selectedStartDate={selectedStartDate}
+                selectedEndDate={selectedEndDate}
+                totalObservations={totalObservations}
+                observationLimit={observationLimit}
+                isDataLimited={isDataLimited}
               />
             </div>
           </div>

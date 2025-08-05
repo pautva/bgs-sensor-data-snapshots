@@ -13,6 +13,11 @@ interface DatastreamChartProps {
   observations: Record<number, Observation[]>;
   isLoading?: boolean;
   className?: string;
+  selectedStartDate?: Date;
+  selectedEndDate?: Date;
+  totalObservations?: number;
+  observationLimit?: number;
+  isDataLimited?: boolean;
 }
 
 // Chart color palette using Tailwind colors
@@ -24,7 +29,29 @@ const CHART_COLORS = [
   '#ef4444'  // red-500
 ];
 
-export function DatastreamChart({ datastreams, observations, isLoading = false, className }: DatastreamChartProps) {
+// Helper function to extract property name from datastream name
+// e.g. "GGERFS_01 Air Temperature" -> "Air Temperature"
+function extractPropertyName(datastreamName: string): string {
+  // Split by space and take everything after the first part (which is usually the borehole ID)
+  const parts = datastreamName.split(' ');
+  if (parts.length > 1) {
+    return parts.slice(1).join(' ');
+  }
+  // If no space found, return the original name
+  return datastreamName;
+}
+
+export function DatastreamChart({ 
+  datastreams, 
+  observations, 
+  isLoading = false, 
+  className,
+  selectedStartDate,
+  selectedEndDate,
+  totalObservations,
+  observationLimit,
+  isDataLimited
+}: DatastreamChartProps) {
   const [isNormalised, setIsNormalised] = useState(true);
   const [visibleDatastreams, setVisibleDatastreams] = useState<Set<number>>(
     () => new Set(datastreams.map(ds => ds.datastream_id))
@@ -61,8 +88,8 @@ export function DatastreamChart({ datastreams, observations, isLoading = false, 
     datastreams.forEach(datastream => {
       const datastreamObs = observations[datastream.datastream_id] || [];
       
-      // Take the latest 50 observations for this datastream
-      datastreamObs.slice(-50).forEach(obs => {
+      // Use all fetched observations for this datastream
+      datastreamObs.forEach(obs => {
         const timestamp = obs.phenomenon_time;
         const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
@@ -76,16 +103,16 @@ export function DatastreamChart({ datastreams, observations, isLoading = false, 
         }
         
         const dataPoint = allDataPoints.get(timestamp);
-        if (typeof obs.result === 'number' && !isNaN(obs.result)) {
+        // Scientific data validation: only include valid numerical results
+        if (typeof obs.result === 'number' && !isNaN(obs.result) && isFinite(obs.result)) {
           dataPoint[`datastream_${datastream.datastream_id}`] = obs.result;
         }
       });
     });
 
-    // Convert to array and sort by timestamp, take latest 50
+    // Convert to array and sort by timestamp (use all data points)
     const rawData = Array.from(allDataPoints.values())
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-      .slice(-50);
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     // Apply normalization if enabled
     if (isNormalised && rawData.length > 0) {
@@ -206,7 +233,14 @@ export function DatastreamChart({ datastreams, observations, isLoading = false, 
           </Toggle>
         </div>
         <p className="text-sm text-muted-foreground">
-          Latest 50 readings showing trends over time
+          {(() => {
+            if (selectedStartDate && selectedEndDate) {
+              const start = selectedStartDate.toISOString().split('T')[0];
+              const end = selectedEndDate.toISOString().split('T')[0];
+              return `Readings from ${start} to ${end}`;
+            }
+            return 'Latest readings showing trends over time';
+          })()}
           {isNormalised && ' (Normalised to 0-1 scale for comparison)'}
         </p>
       </CardHeader>
@@ -236,7 +270,9 @@ export function DatastreamChart({ datastreams, observations, isLoading = false, 
                   
                   return (
                     <div className="bg-background border border-border rounded-md shadow-lg p-3 text-sm">
-                      <p className="font-medium text-foreground mb-2">Time: {label}</p>
+                      <p className="font-medium text-foreground mb-2">
+                        {payload[0]?.payload?.date} at {label}
+                      </p>
                       <div className="space-y-1">
                         {payload.map((entry, index) => {
                           const datastream = datastreams.find(ds => `datastream_${ds.datastream_id}` === entry.dataKey);
@@ -278,7 +314,7 @@ export function DatastreamChart({ datastreams, observations, isLoading = false, 
                                   style={{ backgroundColor: color }}
                                 />
                                 <span className="text-muted-foreground">
-                                  {datastream?.name || entry.dataKey}
+                                  {datastream?.name ? extractPropertyName(datastream.name) : entry.dataKey}
                                 </span>
                               </div>
                               <span className="font-mono font-medium text-foreground text-right">
@@ -326,7 +362,7 @@ export function DatastreamChart({ datastreams, observations, isLoading = false, 
               <button
                 key={datastream.datastream_id}
                 onClick={() => toggleDatastreamVisibility(datastream.datastream_id)}
-                className={`flex items-center gap-2 px-2 py-1 rounded-md transition-all hover:bg-muted/50 ${
+                className={`flex items-center gap-2 px-2 py-1 rounded-md transition-all hover:bg-muted/50 cursor-pointer ${
                   isVisible ? 'opacity-100' : 'opacity-50'
                 }`}
                 title={`Click to ${isVisible ? 'hide' : 'show'} ${datastream.name}`}
@@ -343,7 +379,7 @@ export function DatastreamChart({ datastreams, observations, isLoading = false, 
                 <span className={`text-sm transition-all ${
                   isVisible ? '' : 'line-through'
                 }`}>
-                  {datastream.name} ({datastream.unit_symbol})
+                  {extractPropertyName(datastream.name)} ({datastream.unit_symbol})
                 </span>
               </button>
             );

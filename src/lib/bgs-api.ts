@@ -56,6 +56,17 @@ function getCachedData<T>(key: string): T | null {
 }
 
 function setCachedData<T>(key: string, data: T, ttlMs: number = 60000): void {
+  // Prevent memory leaks by limiting cache size
+  if (apiCache.size > 100) {
+    // Remove oldest entries when cache gets too large
+    const entries = Array.from(apiCache.entries());
+    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+    // Remove oldest 20 entries
+    for (let i = 0; i < 20; i++) {
+      apiCache.delete(entries[i][0]);
+    }
+  }
+  
   apiCache.set(key, {
     data,
     timestamp: Date.now(),
@@ -238,19 +249,40 @@ export async function getSensorDatastreams(sensorId: number): Promise<BGSApiResp
 
 export async function getDatastreamObservations(
   datastreamId: number,
-  limit: number = 100
-): Promise<BGSApiResponse<GetObservationsResponse>> {
-  const cacheKey = `observations_${datastreamId}_${limit}`;
+  limit: number = 100,
+  startDate?: string,
+  endDate?: string
+): Promise<BGSApiResponse<GetObservationsResponse & { isLimited?: boolean }>> {
+  const cacheKey = `observations_${datastreamId}_${limit}_${startDate || 'nostart'}_${endDate || 'noend'}`;
   const cached = getCachedData<GetObservationsResponse>(cacheKey);
   if (cached) {
     return { success: true, data: cached };
   }
 
   try {
+    // Build FROST API query with optional date filtering and count
+    // Use ascending order when date filtering to get chronological data
+    const orderBy = (startDate || endDate) ? 'phenomenonTime%20asc' : 'phenomenonTime%20desc';
+    let query = `/Datastreams(${datastreamId})/Observations?$top=${limit}&$count=true&$orderby=${orderBy}`;
+    
+    // Add date range filter if provided
+    // Use proper timezone handling for scientific accuracy
+    const filters = [];
+    if (startDate) {
+      // Start of day in UTC to ensure we don't miss data
+      filters.push(`phenomenonTime ge ${startDate}T00:00:00.000Z`);
+    }
+    if (endDate) {
+      // End of day in UTC to include all data for the selected date
+      filters.push(`phenomenonTime le ${endDate}T23:59:59.999Z`);
+    }
+    
+    if (filters.length > 0) {
+      query += `&$filter=${filters.join(' and ')}`;
+    }
+
     // Fetch real observations from FROST API
-    const response = await frostApiCall(
-      `/Datastreams(${datastreamId})/Observations?$top=${limit}&$orderby=phenomenonTime%20desc`
-    );
+    const response = await frostApiCall(query);
     
     const observations: Observation[] = response.value.map((obs: any, index: number) => ({
       observation_id: parseInt(obs['@iot.id']) || index + 1,
@@ -260,10 +292,15 @@ export async function getDatastreamObservations(
       result_quality: obs.resultQuality || "Unknown"
     }));
     
+    // Check if data was limited by comparing returned count vs total available
+    const totalAvailable = response['@iot.count'] || observations.length;
+    const isLimited = observations.length < totalAvailable;
+
     const result = {
       observations,
       datastream_id: datastreamId,
-      total_count: observations.length
+      total_count: observations.length,
+      isLimited
     };
     
     setCachedData(cacheKey, result, 60000); // Cache for 1 minute
@@ -298,6 +335,40 @@ export async function getSensorDatastreamCount(sensorId: number): Promise<number
   } catch (error) {
     console.error(`Error fetching datastream count for sensor ${sensorId}:`, error);
     return 0;
+  }
+}
+
+// Function to get the available date range for a datastream
+export async function getDatastreamDateRange(datastreamId: number): Promise<{
+  startDate: string | null;
+  endDate: string | null;
+}> {
+  const cacheKey = `daterange_${datastreamId}`;
+  const cached = getCachedData<{ startDate: string | null; endDate: string | null }>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    // Get the first and last observations to determine date range
+    const [firstResponse, lastResponse] = await Promise.all([
+      frostApiCall(`/Datastreams(${datastreamId})/Observations?$top=1&$orderby=phenomenonTime%20asc`),
+      frostApiCall(`/Datastreams(${datastreamId})/Observations?$top=1&$orderby=phenomenonTime%20desc`)
+    ]);
+
+    const startDate = firstResponse.value?.[0]?.phenomenonTime 
+      ? firstResponse.value[0].phenomenonTime.split('T')[0] 
+      : null;
+    const endDate = lastResponse.value?.[0]?.phenomenonTime 
+      ? lastResponse.value[0].phenomenonTime.split('T')[0] 
+      : null;
+
+    const result = { startDate, endDate };
+    setCachedData(cacheKey, result, 300000); // Cache for 5 minutes
+    return result;
+  } catch (error) {
+    console.error(`Error fetching date range for datastream ${datastreamId}:`, error);
+    return { startDate: null, endDate: null };
   }
 }
 
