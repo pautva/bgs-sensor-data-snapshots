@@ -83,6 +83,14 @@ export interface EnhancedSensor extends Sensor {
   status: 'Active' | 'Inactive' | 'Maintenance';
 }
 
+// Site mapping from API values to our SensorSite types (shared constant)
+const SITE_MAPPING: Record<string, SensorSite> = {
+  'UKGEOS Glasgow Observatory': 'UKGEOS Glasgow',
+  'BGS Cardiff': 'BGS Cardiff',
+  'UKGEOS Cheshire Observatory': 'UKGEOS Cheshire',
+  'Wallingford': 'Wallingford'
+};
+
 // Simple cache for API responses
 const apiCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
@@ -143,6 +151,11 @@ export async function listSensors(): Promise<BGSApiResponse<ListSensorsResponse>
       else if (nameDesc.includes('dts')) category = 'DTS Monitoring';
       else if (nameDesc.includes('dtc')) category = 'DTC Monitoring';
       else if (nameDesc.includes('barometer')) category = 'Barometer';
+
+      // Determine site from location properties (use actual site property from API)
+      const site: SensorSite = location?.properties?.site 
+        ? SITE_MAPPING[location.properties.site] || 'Wallingford'
+        : 'Wallingford';
       
       return {
         id: parseInt(thing['@iot.id']) || index + 1,
@@ -153,7 +166,8 @@ export async function listSensors(): Promise<BGSApiResponse<ListSensorsResponse>
         published: true,
         measurement_capabilities: [], // Will be populated on-demand
         total_datastreams: 0, // Will be populated on-demand
-        deployment_locations: location ? [locationName] : []
+        deployment_locations: location ? [locationName] : [],
+        location_site: site // Add the actual site property
       };
     });
     
@@ -199,16 +213,10 @@ export async function listLocations(): Promise<BGSApiResponse<ListLocationsRespo
         latitude = loc.location.coordinates[1] || 0;
       }
       
-      // Determine site based on location name/description
-      let site: SensorSite = 'Wallingford';
-      const locName = `${loc.name} ${loc.description}`.toLowerCase();
-      if (locName.includes('glasgow') || locName.includes('ggerfs')) {
-        site = 'UKGEOS Glasgow Observatory';
-      } else if (locName.includes('cardiff') || locName.includes('wales')) {
-        site = 'BGS Cardiff';
-      } else if (locName.includes('cheshire') || locName.includes('ince')) {
-        site = 'UKGEOS Cheshire Observatory';
-      }
+      // Determine site from location properties (use actual site property from API)
+      const site: SensorSite = loc.properties?.site 
+        ? SITE_MAPPING[loc.properties.site] || 'Wallingford'
+        : 'Wallingford';
       
       return {
         location_id: parseInt(loc['@iot.id']) || index + 1,
@@ -475,23 +483,24 @@ export async function getDashboardStats(): Promise<BGSApiResponse<DashboardStats
     
     // Calculate site statistics
     const siteStats: SiteStats[] = [
-      'UKGEOS Glasgow Observatory',
+      'UKGEOS Glasgow',
       'BGS Cardiff',
-      'UKGEOS Cheshire Observatory',
+      'UKGEOS Cheshire',
       'Wallingford'
     ].map(site => {
       const siteLocations = locations.filter(loc => loc.site === site);
       const activeLocations = siteLocations.filter(loc => loc.active);
       
-      // Calculate sensor categories for this site (mock data)
+      // Calculate sensor categories for this site from actual sensor data
+      const siteSensors = sensors.filter(sensor => sensor.location_site === site);
       const categoryCounts: Record<SensorCategory, number> = {
-        'Groundwater Monitoring': site === 'UKGEOS Glasgow Observatory' ? 2 : 1,
-        'Weather Station': 1,
-        'Soil Gas Monitoring': site === 'UKGEOS Cheshire Observatory' ? 2 : 0,
-        'Atmospheric Monitoring': 1,
-        'DTS Monitoring': site === 'BGS Cardiff' ? 1 : 0,
-        'DTC Monitoring': 0,
-        'Barometer': 1
+        'Groundwater Monitoring': siteSensors.filter(s => s.category === 'Groundwater Monitoring').length,
+        'Weather Station': siteSensors.filter(s => s.category === 'Weather Station').length,
+        'Soil Gas Monitoring': siteSensors.filter(s => s.category === 'Soil Gas Monitoring').length,
+        'Atmospheric Monitoring': siteSensors.filter(s => s.category === 'Atmospheric Monitoring').length,
+        'DTS Monitoring': siteSensors.filter(s => s.category === 'DTS Monitoring').length,
+        'DTC Monitoring': siteSensors.filter(s => s.category === 'DTC Monitoring').length,
+        'Barometer': siteSensors.filter(s => s.category === 'Barometer').length
       };
       
       return {

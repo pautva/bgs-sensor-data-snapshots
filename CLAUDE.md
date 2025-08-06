@@ -215,6 +215,9 @@ export const FROST_API_BASE = 'https://sensors.bgs.ac.uk/FROST-Server/v1.1';
 
 ### **Advanced Sensor Filtering**
 - **Text Search** - Search sensor names, descriptions, locations
+- **Site Location Filter** - Filter by observatory site using actual BGS location data:
+  - UKGEOS Glasgow, BGS Cardiff, UKGEOS Cheshire, Wallingford
+  - Uses `properties.site` field from FROST API for accurate filtering
 - **Sensor Type Filter** - Filter by Groundwater Logger, Weather Station, etc.
 - **Measurement Type Filter** - Smart extraction of core measurement types:
   - Temperature, Conductivity, Salinity, TDS, pH, Pressure, Humidity
@@ -222,6 +225,7 @@ export const FROST_API_BASE = 'https://sensors.bgs.ac.uk/FROST-Server/v1.1';
   - Gas Measurements: Carbon Dioxide, Methane, Oxygen, etc.
 - **Combined Filtering** - All filters work together
 - **Clear Filters** - One-click reset of all filters
+- **Clear Labels** - Descriptive placeholders: "All Observatory Sites", "All Sensor Types", "All Measurement Types"
 
 ### **Interactive Table**
 - **Click-to-expand** - Click entire row to view sensor datastreams
@@ -242,6 +246,10 @@ export const FROST_API_BASE = 'https://sensors.bgs.ac.uk/FROST-Server/v1.1';
 ### **Performance Optimizations**
 - **No API limits** - Fetches all available sensors (removed $top=100)
 - **Smart caching** - Intelligent datastream caching to avoid repeated calls
+- **Optimized Site Detection** - Uses actual `properties.site` from FROST API location data
+- **Shared Constants** - Site mapping defined once and reused across functions
+- **Simplified Logic** - Removed redundant fallback code and string inference
+- **Efficient Filtering** - Direct property access instead of string parsing
 - **Real Data Processing** - Actual sensor observations with proper error handling
 - **Memoized calculations** - Efficient filtering and sorting
 - **Loading states** - Proper loading indicators throughout
@@ -254,6 +262,22 @@ export const FROST_API_BASE = 'https://sensors.bgs.ac.uk/FROST-Server/v1.1';
 - **Visual Indicators** - Color-coded trends (green=up, red=down) and value highlighting
 
 ## Recent Updates (6 August 2025)
+
+### Observatory Site Location Filtering (Latest)
+Added geographical filtering by BGS observatory sites with clean, optimized implementation:
+
+- **Site Filter Added** - New dropdown positioned left of existing filters
+- **Accurate Data Source** - Uses `properties.site` from FROST API location data (not name inference)
+- **4 Observatory Sites** - UKGEOS Glasgow, BGS Cardiff, UKGEOS Cheshire, Wallingford
+- **Clean UI Names** - Shortened from verbose API names (e.g., "UKGEOS Glasgow Observatory" → "UKGEOS Glasgow")
+- **Performance Optimized** - Shared constants, simplified logic, direct property access
+- **Clear UX** - Descriptive placeholders: "All Observatory Sites", "All Sensor Types", "All Measurement Types"
+
+**Technical Implementation:**
+- Added `location_site` property to Sensor interface
+- Created `SITE_MAPPING` constant for efficient API-to-UI name translation
+- Removed redundant string inference fallback code
+- TypeScript optimized with proper type handling
 
 ### Centralized API Configuration
 - **Single Configuration Source** - Created `src/lib/api-config.ts` for centralized API base URL management

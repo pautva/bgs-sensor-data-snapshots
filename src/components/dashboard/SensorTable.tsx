@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Sensor, Datastream } from '@/types/bgs-sensor';
+import { Sensor, Datastream, SensorSite } from '@/types/bgs-sensor';
 import { getEnhancedSensors, EnhancedSensor, getSensorDatastreams } from '@/lib/bgs-api';
 import { useProgressiveSensorData } from '@/hooks/useProgressiveSensorData';
 import { 
@@ -55,6 +55,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [selectedSite, setSelectedSite] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedMeasurement, setSelectedMeasurement] = useState<string>('all');
   const [expandedDatastreams, setExpandedDatastreams] = useState<Set<number>>(new Set());
@@ -104,6 +105,17 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
     }
   }, [basicSensors, isLoadingBasic, progressiveError]);
 
+  // Handle site selection
+  const handleSiteChange = (site: string) => {
+    setSelectedSite(site);
+  };
+
+  // Get site from sensor location data
+  const getSensorSite = (sensor: EnhancedSensor): string => {
+    return sensor.location_site || 'Unknown Site';
+  };
+
+
   // Infer likely measurements from sensor name and description (for filtering)
   const inferMeasurementsFromSensorName = (name: string, description: string): string[] => {
     const text = `${name} ${description}`.toLowerCase();
@@ -146,11 +158,12 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
       const matchesSearch = sensor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            sensor.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            sensor.location_name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSite = selectedSite === 'all' || getSensorSite(sensor) === selectedSite;
       const matchesType = selectedType === 'all' || sensor.type === selectedType;
       const matchesMeasurement = selectedMeasurement === 'all' || 
                                 sensor.measurements.includes(selectedMeasurement);
       
-      return matchesSearch && matchesType && matchesMeasurement;
+      return matchesSearch && matchesSite && matchesType && matchesMeasurement;
     });
 
     // Sort sensors
@@ -184,7 +197,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
     });
 
     return filtered;
-  }, [sensors, searchTerm, selectedType, selectedMeasurement, sortField, sortDirection]);
+  }, [sensors, searchTerm, selectedSite, selectedType, selectedMeasurement, sortField, sortDirection]);
 
   // Handle sorting
   const handleSort = (field: SortField) => {
@@ -254,6 +267,12 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
     return uniqueMeasurementTypes;
   }, [sensors]);
 
+  // Get available sites from sensors
+  const availableSites = useMemo(() => {
+    const sites = [...new Set(sensors.map(sensor => sensor.location_site).filter(Boolean))].sort();
+    return sites as string[];
+  }, [sensors]);
+
 
   if (isLoading) {
     return (
@@ -300,7 +319,7 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
         </CardTitle>
         
         {/* Filters and Search */}
-        <div className="flex flex-col sm:flex-row gap-4 mt-4">
+        <div className="flex flex-col sm:flex-row gap-2 mt-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -312,12 +331,28 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
           </div>
           
           <div className="flex gap-2">
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger size="lg" className="w-48">
-                <SelectValue placeholder="All Types" />
+            {/* Site Filter - First */}
+            <Select value={selectedSite} onValueChange={handleSiteChange}>
+              <SelectTrigger size="lg" className="w-56">
+                <SelectValue placeholder="All Observatory Sites" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">All Observatory Sites</SelectItem>
+                {availableSites.map(site => (
+                  <SelectItem key={site} value={site}>
+                    {site}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Sensor Type Filter - Second */}
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger size="lg" className="w-48">
+                <SelectValue placeholder="All Sensor Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sensor Types</SelectItem>
                 {sensorTypes.map(type => (
                   <SelectItem key={type} value={type}>
                     {type}
@@ -326,12 +361,13 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
               </SelectContent>
             </Select>
             
+            {/* Measurement Type Filter - Third */}
             <Select value={selectedMeasurement} onValueChange={setSelectedMeasurement}>
-              <SelectTrigger size="lg" className="w-48">
-                <SelectValue placeholder="Measurement Type" />
+              <SelectTrigger size="lg" className="w-52">
+                <SelectValue placeholder="All Measurement Types" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">All Measurement Types</SelectItem>
                 {measurementTypes.map(type => (
                   <SelectItem key={type} value={type}>
                     {type}
@@ -486,12 +522,13 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
           <span>
             Showing {filteredAndSortedSensors.length} of {sensors.length} sensors
           </span>
-          {(searchTerm || selectedType !== 'all' || selectedMeasurement !== 'all') && (
+          {(searchTerm || selectedSite !== 'all' || selectedType !== 'all' || selectedMeasurement !== 'all') && (
             <Button 
               variant="ghost" 
               size="sm"
               onClick={() => {
                 setSearchTerm('');
+                setSelectedSite('all');
                 setSelectedType('all');
                 setSelectedMeasurement('all');
               }}

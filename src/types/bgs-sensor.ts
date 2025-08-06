@@ -11,9 +11,9 @@ export type SensorCategory =
   | 'Barometer';
 
 export type SensorSite = 
-  | 'UKGEOS Glasgow Observatory'
+  | 'UKGEOS Glasgow'
   | 'BGS Cardiff'
-  | 'UKGEOS Cheshire Observatory'
+  | 'UKGEOS Cheshire'
   | 'Wallingford';
 
 export type SensorStatus = 'Active' | 'Inactive' | 'Maintenance';
@@ -28,6 +28,7 @@ export interface Sensor {
   measurement_capabilities: string[];
   total_datastreams: number;
   deployment_locations: string[];
+  location_site?: SensorSite; // Site determined from location data
   status?: SensorStatus; // Derived field for UI
 }
 
