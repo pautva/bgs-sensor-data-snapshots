@@ -1,4 +1,7 @@
 // BGS Sensor Data API Integration
+
+import { FROST_API_BASE } from './api-config';
+
 // Provides functions to interact with the BGS Sensor Data MCP and FROST API
 
 import {
@@ -57,9 +60,6 @@ export function processObservationValues(observations: Observation[]): number[] 
     .map(obs => validateSensorValue(obs.result))
     .filter((val): val is number => val !== null);
 }
-
-// FROST API base URL
-const FROST_API_BASE = 'https://sensors.bgs.ac.uk/FROST-Server/v1.1';
 
 // Helper function to make FROST API calls
 async function frostApiCall(endpoint: string): Promise<any> {
@@ -551,19 +551,6 @@ export async function getDashboardStats(): Promise<BGSApiResponse<DashboardStats
 }
 
 // Utility functions for sensor data processing
-export function getSensorStatusColor(category: SensorCategory): string {
-  const colorMap: Record<SensorCategory, string> = {
-    'Groundwater Monitoring': 'text-blue-600',
-    'Weather Station': 'text-purple-600',
-    'Soil Gas Monitoring': 'text-orange-600',
-    'Atmospheric Monitoring': 'text-cyan-600',
-    'DTS Monitoring': 'text-violet-600',
-    'DTC Monitoring': 'text-pink-600',
-    'Barometer': 'text-teal-600'
-  };
-  
-  return colorMap[category] || 'text-muted-foreground';
-}
 
 export function formatSensorValue(value: number | string, unit?: string): string {
   if (typeof value === 'string') return value;

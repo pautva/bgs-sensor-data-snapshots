@@ -1,5 +1,6 @@
 "use client";
 
+import { FROST_API_BASE } from "@/lib/api-config";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +35,7 @@ import Link from "next/link";
 async function getSensorDetails(sensorId: string): Promise<Sensor | null> {
   try {
     const response = await fetch(
-      `https://sensors.bgs.ac.uk/FROST-Server/v1.1/Things(${sensorId})?$expand=Locations`
+      `${FROST_API_BASE}/Things(${sensorId})?$expand=Locations`
     );
     
     if (!response.ok) {
@@ -392,7 +393,7 @@ export default function SensorPage() {
 
               {/* Reset button */}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleReset}
                 disabled={isLoadingChart || isLoadingDateRange}
