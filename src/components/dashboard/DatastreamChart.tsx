@@ -276,9 +276,9 @@ export function DatastreamChart({
                         {payload[0]?.payload?.date} at {label}
                       </p>
                       <div className="space-y-1">
-                        {payload.map((entry, index) => {
+                        {payload.map((entry) => {
                           const datastream = datastreams.find(ds => `datastream_${ds.datastream_id}` === entry.dataKey);
-                          const color = CHART_COLORS[index % CHART_COLORS.length];
+                          const color = entry.color;
                           const normalizedValue = entry.value as number;
                           const unit = datastream?.unit_symbol || '';
                           
