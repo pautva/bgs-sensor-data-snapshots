@@ -334,10 +334,10 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
             {/* Site Filter - First */}
             <Select value={selectedSite} onValueChange={handleSiteChange}>
               <SelectTrigger size="lg" className="w-56">
-                <SelectValue placeholder="All Observatory Sites" />
+                <SelectValue placeholder="All Sites" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Observatory Sites</SelectItem>
+                <SelectItem value="all">All Sites</SelectItem>
                 {availableSites.map(site => (
                   <SelectItem key={site} value={site}>
                     {site}
@@ -364,10 +364,10 @@ export function SensorTable({ className, onSensorSelect }: SensorTableProps) {
             {/* Measurement Type Filter - Third */}
             <Select value={selectedMeasurement} onValueChange={setSelectedMeasurement}>
               <SelectTrigger size="lg" className="w-52">
-                <SelectValue placeholder="All Measurement Types" />
+                <SelectValue placeholder="All Properties" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Measurement Types</SelectItem>
+                <SelectItem value="all">All Properties</SelectItem>
                 {measurementTypes.map(type => (
                   <SelectItem key={type} value={type}>
                     {type}

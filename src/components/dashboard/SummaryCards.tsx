@@ -50,25 +50,25 @@ export function SummaryCards({
       title: 'Total Sensors',
       value: totalSensors.toLocaleString(),
       icon: Satellite,
-      description: 'Active monitoring devices'
+      description: 'Monitoring devices'
     },
     {
       title: 'Locations',
       value: totalLocations.toLocaleString(),
       icon: MapPin,
-      description: 'Deployment sites'
+      description: 'Locations'
     },
     {
       title: 'Active Sites',
       value: activeSites.toLocaleString(),
       icon: Building2,
-      description: 'Major BGS facilities'
+      description: 'Major BGS sites'
     },
     {
       title: 'Datastreams',
       value: isLoadingDatastreams ? '...' : totalDatastreams.toLocaleString(),
       icon: Activity,
-      description: 'Live data feeds'
+      description: 'Datastreams monitored'
     }
   ];
 
