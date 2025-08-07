@@ -116,13 +116,16 @@ export function extractPropertyName(datastreamName: string): string {
  */
 export function calculateObservationLimit(daysDiff: number): number {
   if (daysDiff <= 7) {
-    // 1 week: up to 24 readings/day (hourly)
-    return Math.min(daysDiff * 24, 1000);
+    // 1 week: up to 24 readings/day (hourly resolution)
+    return Math.min(daysDiff * 24, 500);
+  } else if (daysDiff <= 14) {
+    // 2 weeks: up to 12 readings/day (2-hourly resolution) - optimized for new default
+    return Math.min(daysDiff * 12, 500);
   } else if (daysDiff <= 30) {
-    // 1 month: up to 8 readings/day (3-hourly) for performance
+    // 1 month: up to 8 readings/day (3-hourly resolution)
     return Math.min(daysDiff * 8, 1000);
   } else {
-    // Longer ranges: up to 4 readings/day (6-hourly)
+    // Longer ranges: up to 4 readings/day (6-hourly resolution)
     return Math.min(daysDiff * 4, 2000);
   }
 }

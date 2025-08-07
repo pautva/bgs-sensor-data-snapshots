@@ -8,6 +8,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { Datastream, Observation } from '@/types/bgs-sensor';
 import { validateSensorValue } from '@/lib/bgs-api';
 import { getXAxisConfig, formatDisplayTime, getChartMargins, extractPropertyName } from '@/lib/chart-utils';
+import { formatDateForDisplay } from '@/lib/date-utils';
 import { TrendingUp, BarChart3, Loader2 } from 'lucide-react';
 
 interface DatastreamChartProps {
@@ -85,35 +86,29 @@ export function DatastreamChart({
     datastreams.forEach(datastream => {
       const datastreamObs = observations[datastream.datastream_id] || [];
       
-      // Use all fetched observations for this datastream
+      // Process each observation for this datastream
       datastreamObs.forEach(obs => {
         const timestamp = obs.phenomenon_time;
-        const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const date = new Date(timestamp);
-        
-        // Create display time using centralized formatting
         const displayTime = formatDisplayTime(date, xAxisConfig.format);
         
         // Initialize or get existing data point
         if (!allDataPoints.has(timestamp)) {
           allDataPoints.set(timestamp, {
             timestamp,
-            time,
-            date: date.toLocaleDateString(),
             displayTime
           });
         }
         
-        const dataPoint = allDataPoints.get(timestamp);
-        // Use standardized scientific data validation
+        // Add validated data to the point
         const validatedValue = validateSensorValue(obs.result);
         if (validatedValue !== null) {
-          dataPoint[`datastream_${datastream.datastream_id}`] = validatedValue;
+          allDataPoints.get(timestamp)![`datastream_${datastream.datastream_id}`] = validatedValue;
         }
       });
     });
 
-    // Convert to array and sort by timestamp (use all data points)
+    // Convert to array and sort by timestamp
     const rawData = Array.from(allDataPoints.values())
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
@@ -135,26 +130,25 @@ export function DatastreamChart({
         }
       });
 
-      // Normalise each data point while preserving original values
+      // Apply normalization to each data point
       return rawData.map(point => {
-        const NormalisedPoint = { ...point };
+        const normalizedPoint = { ...point };
         
         datastreams.forEach(datastream => {
           const dataKey = `datastream_${datastream.datastream_id}`;
-          const originalDataKey = `${dataKey}_original`;
           const value = point[dataKey];
           const range = datastreamRanges.get(dataKey);
           
           if (typeof value === 'number' && !isNaN(value) && range) {
             const { min, max } = range;
             // Store original value for tooltip
-            NormalisedPoint[originalDataKey] = value;
-            // Min-max normalization to 0-1 scale
-            NormalisedPoint[dataKey] = max === min ? 0 : (value - min) / (max - min);
+            normalizedPoint[`${dataKey}_original`] = value;
+            // Apply min-max normalization
+            normalizedPoint[dataKey] = max === min ? 0 : (value - min) / (max - min);
           }
         });
         
-        return NormalisedPoint;
+        return normalizedPoint;
       });
     }
 
@@ -238,8 +232,8 @@ export function DatastreamChart({
         <p className="text-sm text-muted-foreground">
           {(() => {
             if (selectedStartDate && selectedEndDate) {
-              const start = selectedStartDate.toISOString().split('T')[0];
-              const end = selectedEndDate.toISOString().split('T')[0];
+              const start = formatDateForDisplay(selectedStartDate);
+              const end = formatDateForDisplay(selectedEndDate);
               return `Readings from ${start} to ${end}`;
             }
             return 'Latest readings showing trends over time';
@@ -280,7 +274,12 @@ export function DatastreamChart({
                   return (
                     <div className="bg-background border border-border rounded-md shadow-lg p-3 text-sm">
                       <p className="font-medium text-foreground mb-2">
-                        {payload[0]?.payload?.date} at {payload[0]?.payload?.time}
+                        {(() => {
+                          const timestamp = payload[0]?.payload?.timestamp;
+                          if (!timestamp) return 'Unknown time';
+                          const date = new Date(timestamp);
+                          return `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                        })()}
                       </p>
                       <div className="space-y-1">
                         {payload.map((entry) => {

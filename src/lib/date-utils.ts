@@ -28,7 +28,18 @@ export function extractObservationDateRange(observations: Record<number, Observa
   });
 
   return {
-    startDate: earliestDate ? new Date(earliestDate).toISOString().split('T')[0] : null,
-    endDate: latestDate ? new Date(latestDate).toISOString().split('T')[0] : null
+    startDate: earliestDate ? formatDateForDisplay(new Date(earliestDate)) : null,
+    endDate: latestDate ? formatDateForDisplay(new Date(latestDate)) : null
   };
+}
+
+/**
+ * Format a Date object to YYYY-MM-DD format without timezone conversion issues
+ * @param date The Date object to format
+ * @returns Formatted date string in YYYY-MM-DD format
+ */
+export function formatDateForDisplay(date: Date): string {
+  return date.getFullYear() + '-' + 
+    String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(date.getDate()).padStart(2, '0');
 }

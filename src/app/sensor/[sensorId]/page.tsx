@@ -20,6 +20,7 @@ import {
 } from "@/lib/bgs-api";
 import { findMatchingLocation } from "@/lib/location-utils";
 import { calculateObservationLimit } from "@/lib/chart-utils";
+import { formatDateForDisplay } from "@/lib/date-utils";
 import {
   Activity,
   MapPin,
@@ -91,35 +92,11 @@ export default function SensorPage() {
   const [isLoadingChart, setIsLoadingChart] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset function to return to initial state
+  // Reset to default date range
   const handleReset = () => {
-    // Reset date selections
     setSelectedStartDate(undefined);
     setSelectedEndDate(undefined);
-    
-    // Clear chart data first
-    setChartObservations({});
-    setTotalObservations(0);
-    setIsDataLimited(false);
-    
-    // Force re-calculation of default dates if we have available dates
-    if (availableStartDate && availableEndDate) {
-      // Validate available dates for scientific integrity
-      if (availableStartDate <= availableEndDate) {
-        // Default to last 30 days from the end date, or available range if shorter
-        const thirtyDaysFromEnd = new Date(availableEndDate);
-        thirtyDaysFromEnd.setDate(thirtyDaysFromEnd.getDate() - 30);
-        
-        // Ensure the calculated start date isn't before the available start date
-        const defaultStartDate = thirtyDaysFromEnd < availableStartDate ? availableStartDate : thirtyDaysFromEnd;
-        
-        // Final validation: ensure start date is not after end date
-        if (defaultStartDate <= availableEndDate) {
-          setSelectedStartDate(defaultStartDate);
-          setSelectedEndDate(availableEndDate);
-        }
-      }
-    }
+    // The useEffect will automatically recalculate default dates
   };
 
   // Fetch sensor details on component mount
@@ -200,6 +177,7 @@ export default function SensorPage() {
         setIsLoadingDateRange(true);
         
         // Get date range from the first datastream (assuming all datastreams have similar ranges)
+        if (datastreams.length === 0) return;
         const dateRange = await getDatastreamDateRange(datastreams[0].datastream_id);
         
         if (dateRange.startDate && dateRange.endDate) {
@@ -211,12 +189,12 @@ export default function SensorPage() {
           
           // Set default selected dates if not already set
           if (!selectedStartDate || !selectedEndDate) {
-            // Default to last 30 days from the end date, or available range if shorter
-            const thirtyDaysFromEnd = new Date(endDate);
-            thirtyDaysFromEnd.setDate(thirtyDaysFromEnd.getDate() - 30);
+            // Default to last 14 days from the end date, or available range if shorter
+            const fourteenDaysFromEnd = new Date(endDate);
+            fourteenDaysFromEnd.setDate(fourteenDaysFromEnd.getDate() - 14);
             
             // Ensure the calculated start date isn't before the available start date
-            const defaultStartDate = thirtyDaysFromEnd < startDate ? startDate : thirtyDaysFromEnd;
+            const defaultStartDate = fourteenDaysFromEnd < startDate ? startDate : fourteenDaysFromEnd;
             
             if (!selectedStartDate) {
               setSelectedStartDate(defaultStartDate);
@@ -252,17 +230,19 @@ export default function SensorPage() {
       try {
         setIsLoadingChart(true);
         
-        // Convert selected dates to strings for API call
-        const startDateStr = selectedStartDate ? selectedStartDate.toISOString().split('T')[0] : undefined;
-        const endDateStr = selectedEndDate ? selectedEndDate.toISOString().split('T')[0] : undefined;
-        
         // Calculate appropriate limit using centralized utility
         const daysDiff = selectedStartDate && selectedEndDate 
           ? Math.ceil((selectedEndDate.getTime() - selectedStartDate.getTime()) / (1000 * 60 * 60 * 24))
           : 1;
+          
+        // Convert selected dates to strings for API call
+        // Use local date string to avoid timezone issues
+        const startDateStr = selectedStartDate ? formatDateForDisplay(selectedStartDate) : undefined;
+        const endDateStr = selectedEndDate ? formatDateForDisplay(selectedEndDate) : undefined;
         const limit = calculateObservationLimit(daysDiff);
         setObservationLimit(limit);
         
+        // Only process first 5 datastreams to match chart display
         const observationsPromises = datastreams
           .slice(0, 5)
           .map(async (datastream) => {
@@ -307,7 +287,7 @@ export default function SensorPage() {
     };
 
     fetchChartData();
-  }, [datastreams, selectedStartDate, selectedEndDate]);
+  }, [datastreams.map(d => d.datastream_id).join(','), selectedStartDate, selectedEndDate]);
 
 
   if (isLoadingSensor) {
@@ -353,7 +333,7 @@ export default function SensorPage() {
               {selectedStartDate && selectedEndDate && (
                 <Badge variant="secondary" className="text-xs">
                   <Calendar className="h-3 w-3 mr-1" />
-                  {selectedStartDate.toISOString().split('T')[0]} to {selectedEndDate.toISOString().split('T')[0]}
+                  {formatDateForDisplay(selectedStartDate)} to {formatDateForDisplay(selectedEndDate)}
                 </Badge>
               )}
             </div>

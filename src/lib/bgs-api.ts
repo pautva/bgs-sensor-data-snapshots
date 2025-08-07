@@ -315,14 +315,14 @@ export async function getDatastreamObservations(
     let query = `/Datastreams(${datastreamId})/Observations?$top=${limit}&$count=true&$orderby=${orderBy}`;
     
     // Add date range filter if provided
-    // Use proper timezone handling for scientific accuracy
+    // Use UTC timestamps for consistent filtering regardless of timezone
     const filters = [];
     if (startDate) {
-      // Start of day in UTC to ensure we don't miss data
+      // Start of day UTC - the input date is already in YYYY-MM-DD format
       filters.push(`phenomenonTime ge ${startDate}T00:00:00.000Z`);
     }
     if (endDate) {
-      // End of day in UTC to include all data for the selected date
+      // End of day UTC - include all data for the selected date
       filters.push(`phenomenonTime le ${endDate}T23:59:59.999Z`);
     }
     
@@ -352,7 +352,8 @@ export async function getDatastreamObservations(
       isLimited
     };
     
-    setCachedData(cacheKey, result, 60000); // Cache for 1 minute
+    // Cache for 2 minutes for date-filtered queries to reduce API load
+    setCachedData(cacheKey, result, 120000);
     
     return {
       success: true,
