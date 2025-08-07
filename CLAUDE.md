@@ -261,9 +261,46 @@ export const FROST_API_BASE = 'https://sensors.bgs.ac.uk/FROST-Server/v1.1';
 - **Statistical Analysis** - Min, Max, Average, Latest values with trend indicators
 - **Visual Indicators** - Color-coded trends (green=up, red=down) and value highlighting
 
-## Recent Updates (6 August 2025)
+## Recent Updates (7 August 2025)
 
-### Observatory Site Location Filtering (Latest)
+### Chart X-axis & Height Optimization (Latest)
+Enhanced chart display with smart x-axis formatting and optimal space utilization:
+
+#### **Smart X-axis Formatting**
+- **Adaptive Display** - X-axis format adapts to selected date range:
+  - **Same day (≤1 day)**: Shows time only (e.g., "14:30, 15:00") 
+  - **Week range (2-7 days)**: Shows date + time (e.g., "8/5 14:30")
+  - **Month+ range (>7 days)**: Shows rotated dates (e.g., "Aug 5, Aug 6")
+- **Consistent Tooltips** - Always display full date+time information on hover
+- **Rotated Labels** - Automatic -45° rotation for longer ranges to prevent overlap
+
+#### **Optimized Chart Height**
+- **Minimal Margins** - Reduced chart margins for maximum data visualization area:
+  - Short ranges: 10px bottom margin
+  - Long ranges: 35px bottom margin for rotated labels
+- **Compact Legend** - Reduced legend spacing (4px gap) for better space utilization
+- **Flexible Height** - Charts properly fill available container space in full-screen views
+
+#### **Centralized Chart Utilities**
+- **Chart Utils Library** (`src/lib/chart-utils.ts`) - Single source of truth for all chart logic:
+  - `getXAxisConfig()` - Centralized x-axis configuration
+  - `formatDisplayTime()` - Consistent time formatting
+  - `getChartMargins()` - Dynamic margin calculations
+  - `calculateObservationLimit()` - Performance-optimized data limits
+  - `extractPropertyName()` - Clean datastream name extraction
+- **Type Safety** - Proper TypeScript interfaces for chart configuration
+- **DRY Principle** - Eliminated code duplication between components
+- **Maintainability** - Single location for chart behavior changes
+
+#### **Consistent User Experience**
+- **Unified Behavior** - Same x-axis logic across full-screen pages and sidebar sheets
+- **Performance Optimization** - Smart observation limits based on date range:
+  - ≤7 days: 24 readings/day (hourly resolution)
+  - ≤30 days: 8 readings/day (3-hourly resolution) 
+  - >30 days: 4 readings/day (6-hourly resolution)
+- **Height Maximization** - Charts now use 95%+ of available vertical space
+
+### Observatory Site Location Filtering (6 August)
 Added geographical filtering by BGS observatory sites with clean, optimized implementation:
 
 - **Site Filter Added** - New dropdown positioned left of existing filters

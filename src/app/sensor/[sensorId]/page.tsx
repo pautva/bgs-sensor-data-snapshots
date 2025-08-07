@@ -19,6 +19,7 @@ import {
   listLocations,
 } from "@/lib/bgs-api";
 import { findMatchingLocation } from "@/lib/location-utils";
+import { calculateObservationLimit } from "@/lib/chart-utils";
 import {
   Activity,
   MapPin,
@@ -255,24 +256,11 @@ export default function SensorPage() {
         const startDateStr = selectedStartDate ? selectedStartDate.toISOString().split('T')[0] : undefined;
         const endDateStr = selectedEndDate ? selectedEndDate.toISOString().split('T')[0] : undefined;
         
-        // Calculate appropriate limit based on date range
-        let limit = 50; // default for recent data
-        if (selectedStartDate && selectedEndDate) {
-          const daysDiff = Math.ceil((selectedEndDate.getTime() - selectedStartDate.getTime()) / (1000 * 60 * 60 * 24));
-          // Balance between scientific accuracy and performance
-          // For initial load (30 days), use moderate limits for fast display
-          // For longer ranges, increase limits to ensure completeness
-          if (daysDiff <= 7) {
-            // 1 week: up to 24 readings/day (hourly)
-            limit = Math.min(daysDiff * 24, 1000);
-          } else if (daysDiff <= 30) {
-            // 1 month: up to 8 readings/day (3-hourly) for performance
-            limit = Math.min(daysDiff * 8, 1000);
-          } else {
-            // Longer ranges: up to 4 readings/day (6-hourly)
-            limit = Math.min(daysDiff * 4, 2000);
-          }
-        }
+        // Calculate appropriate limit using centralized utility
+        const daysDiff = selectedStartDate && selectedEndDate 
+          ? Math.ceil((selectedEndDate.getTime() - selectedStartDate.getTime()) / (1000 * 60 * 60 * 24))
+          : 1;
+        const limit = calculateObservationLimit(daysDiff);
         setObservationLimit(limit);
         
         const observationsPromises = datastreams

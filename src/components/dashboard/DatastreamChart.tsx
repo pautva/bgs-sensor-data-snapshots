@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Toggle } from '@/components/ui/toggle';
 import { Datastream, Observation } from '@/types/bgs-sensor';
 import { validateSensorValue } from '@/lib/bgs-api';
+import { getXAxisConfig, formatDisplayTime, getChartMargins, extractPropertyName } from '@/lib/chart-utils';
 import { TrendingUp, BarChart3, Loader2 } from 'lucide-react';
 
 interface DatastreamChartProps {
@@ -30,17 +31,7 @@ const CHART_COLORS = [
   '#ef4444'  // red-500
 ];
 
-// Helper function to extract property name from datastream name
-// e.g. "GGERFS_01 Air Temperature" -> "Air Temperature"
-function extractPropertyName(datastreamName: string): string {
-  // Split by space and take everything after the first part (which is usually the borehole ID)
-  const parts = datastreamName.split(' ');
-  if (parts.length > 1) {
-    return parts.slice(1).join(' ');
-  }
-  // If no space found, return the original name
-  return datastreamName;
-}
+// Moved extractPropertyName to chart-utils.ts for reusability
 
 export function DatastreamChart({ 
   datastreams, 
@@ -79,6 +70,11 @@ export function DatastreamChart({
   // Theme-aware colors for light and dark mode
   const axisColor = '#94a3b8'; // slate-400 - works well in both themes
   const textColor = '#64748b'; // slate-500 - readable in both themes
+  
+  // Get x-axis configuration using centralized utility
+  const xAxisConfig = getXAxisConfig(selectedStartDate, selectedEndDate);
+  const chartMargins = getChartMargins(xAxisConfig);
+
   const chartData = useMemo(() => {
     if (!datastreams.length || !Object.keys(observations).length) return [];
 
@@ -93,13 +89,18 @@ export function DatastreamChart({
       datastreamObs.forEach(obs => {
         const timestamp = obs.phenomenon_time;
         const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const date = new Date(timestamp);
+        
+        // Create display time using centralized formatting
+        const displayTime = formatDisplayTime(date, xAxisConfig.format);
         
         // Initialize or get existing data point
         if (!allDataPoints.has(timestamp)) {
           allDataPoints.set(timestamp, {
             timestamp,
             time,
-            date: new Date(timestamp).toLocaleDateString()
+            date: date.toLocaleDateString(),
+            displayTime
           });
         }
         
@@ -158,7 +159,7 @@ export function DatastreamChart({
     }
 
     return rawData;
-  }, [datastreams, observations, isNormalised]);
+  }, [datastreams, observations, isNormalised, xAxisConfig.format]);
 
 
   if (!datastreams.length) {
@@ -249,14 +250,20 @@ export function DatastreamChart({
       <CardContent className={isFullHeight ? 'flex-1 flex flex-col' : ''}>
         <div className={`w-full ${isFullHeight ? 'flex-1 min-h-[300px]' : 'h-[300px]'}`}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <LineChart 
+              data={chartData} 
+              margin={chartMargins}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke={axisColor} strokeOpacity={0.5} />
               <XAxis 
-                dataKey="time" 
+                dataKey="displayTime" 
                 tick={{ fontSize: 12, fill: textColor }}
-                interval="preserveStartEnd"
+                interval={xAxisConfig.interval}
                 stroke={axisColor}
                 strokeOpacity={0.7}
+                angle={xAxisConfig.angle}
+                textAnchor={xAxisConfig.textAnchor}
+                height={xAxisConfig.height}
               />
               <YAxis 
                 tick={{ fontSize: 12, fill: textColor }}
@@ -264,7 +271,7 @@ export function DatastreamChart({
                 stroke={axisColor}
                 strokeOpacity={0.7}
                 domain={isNormalised ? [-0.1, 1.1] : ['auto', 'auto']}
-                tickFormatter={isNormalised ? (value) => value.toFixed(2) : undefined}
+                tickFormatter={isNormalised ? (value: number) => value.toFixed(2) : undefined}
               />
               <Tooltip 
                 content={({ active, payload, label }) => {
@@ -273,7 +280,7 @@ export function DatastreamChart({
                   return (
                     <div className="bg-background border border-border rounded-md shadow-lg p-3 text-sm">
                       <p className="font-medium text-foreground mb-2">
-                        {payload[0]?.payload?.date} at {label}
+                        {payload[0]?.payload?.date} at {payload[0]?.payload?.time}
                       </p>
                       <div className="space-y-1">
                         {payload.map((entry) => {
@@ -355,7 +362,7 @@ export function DatastreamChart({
         </div>
         
         {/* Legend */}
-        <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t">
+        <div className="flex flex-wrap gap-4 mt-1 pt-1 border-t">
           {datastreams.map((datastream, index) => {
             const color = CHART_COLORS[index % CHART_COLORS.length];
             const isVisible = visibleDatastreams.has(datastream.datastream_id);

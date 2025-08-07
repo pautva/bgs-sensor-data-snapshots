@@ -368,6 +368,8 @@ export function SensorDetailSheet({
             datastreams={datastreams.slice(0, 5)}
             observations={chartObservations}
             isLoading={isLoadingChart}
+            selectedStartDate={observationStartDate ? new Date(observationStartDate) : undefined}
+            selectedEndDate={observationEndDate ? new Date(observationEndDate) : undefined}
           />
 
           {/* Datastreams */}
