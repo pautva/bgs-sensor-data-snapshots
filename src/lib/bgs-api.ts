@@ -192,6 +192,52 @@ export async function listSensors(): Promise<BGSApiResponse<ListSensorsResponse>
   }
 }
 
+/**
+ * Get sensor details by ID from FROST API
+ */
+export async function getSensorById(sensorId: string): Promise<BGSApiResponse<{ sensor: Sensor }>> {
+  try {
+    const response = await fetch(
+      `${FROST_API_BASE}/Things(${sensorId})?$expand=Locations`
+    );
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `Failed to fetch sensor: ${response.status}`,
+        data: { sensor: null as any }
+      };
+    }
+    
+    const data = await response.json();
+    
+    // Transform FROST API response to our Sensor interface
+    const sensor: Sensor = {
+      id: data["@iot.id"],
+      name: data.name,
+      description: data.description,
+      category: data.properties?.category || "Unknown",
+      metadata_url: data.properties?.metadataUrl || "",
+      total_datastreams: 0, // Will be updated when we fetch datastreams
+      published: true,
+      measurement_capabilities: [], // Will be populated from datastreams
+      deployment_locations: data.Locations?.map((loc: any) => loc.name) || [],
+    };
+    
+    return {
+      success: true,
+      error: undefined,
+      data: { sensor }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      data: { sensor: null as any }
+    };
+  }
+}
+
 export async function listLocations(): Promise<BGSApiResponse<ListLocationsResponse>> {
   const cacheKey = 'locations';
   const cached = getCachedData<ListLocationsResponse>(cacheKey);

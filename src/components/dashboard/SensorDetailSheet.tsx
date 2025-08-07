@@ -46,8 +46,7 @@ export function SensorDetailSheet({
   onClose,
 }: SensorDetailSheetProps) {
   const [datastreams, setDatastreams] = useState<Datastream[]>([]);
-  const [selectedDatastream, setSelectedDatastream] =
-    useState<Datastream | null>(null);
+  const [selectedDatastream, setSelectedDatastream] = useState<Datastream | null>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [chartObservations, setChartObservations] = useState<
     Record<number, Observation[]>
@@ -121,12 +120,12 @@ export function SensorDetailSheet({
     const fetchChartData = async () => {
       try {
         setIsLoadingChart(true);
+        // Fetch data for all datastreams with simple limit
         const observationsPromises = datastreams
-          .slice(0, 5)
           .map(async (datastream) => {
             const response = await getDatastreamObservations(
               datastream.datastream_id,
-              50
+              200 // Simple fixed limit for sheet view
             );
             return {
               datastreamId: datastream.datastream_id,
@@ -157,14 +156,6 @@ export function SensorDetailSheet({
     fetchChartData();
   }, [datastreams]);
 
-  const getQualityStatus = (quality: ObservationQuality | string | null) => {
-    if (!quality) return "Unknown";
-    if (typeof quality === "object") {
-      return quality.status || quality.quality || "Unknown";
-    }
-    return quality;
-  };
-
   // Fetch observations when datastream is selected
   useEffect(() => {
     if (!selectedDatastream) {
@@ -175,9 +166,10 @@ export function SensorDetailSheet({
     const fetchObservations = async () => {
       try {
         setIsLoadingObservations(true);
-        setError(null); // Clear any previous errors
+        setError(null);
         const response = await getDatastreamObservations(
-          selectedDatastream.datastream_id
+          selectedDatastream.datastream_id,
+          10 // Just get latest 10 observations
         );
 
         if (response.success) {
@@ -197,6 +189,14 @@ export function SensorDetailSheet({
     fetchObservations();
   }, [selectedDatastream]);
 
+  const getQualityStatus = (quality: ObservationQuality | string | null) => {
+    if (!quality) return "Unknown";
+    if (typeof quality === "object") {
+      return quality.status || quality.quality || "Unknown";
+    }
+    return quality;
+  };
+
   if (!sensor) return null;
 
   return (
@@ -209,12 +209,6 @@ export function SensorDetailSheet({
                 <Activity className="h-5 w-5" />
                 {sensor.name}
               </SheetTitle>
-              {/* {observationStartDate && observationEndDate && (
-                <Badge variant="secondary" className="text-xs">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  {observationStartDate} to {observationEndDate}
-                </Badge>
-              )} */}
             </div>
             <div className="flex items-center gap-2">
               <Link href={`/sensor/${sensor.id}`}>
@@ -255,7 +249,7 @@ export function SensorDetailSheet({
                     Borehole Reference: {sensor.name.match(/[A-Z]{2,3}\d{2,3}/)?.[0] || 'N/A'}
                   </Badge>
                   <Badge variant="secondary">
-                    {Object.keys(chartObservations).length || datastreams.length} active datastreams
+                    {datastreams.length} active datastreams
                   </Badge>
                 </div>
               </CardTitle>
@@ -357,7 +351,7 @@ export function SensorDetailSheet({
           {/* Data Summary */}
           {datastreams.length > 0 && (
             <DatastreamSummary
-              datastreams={datastreams.slice(0, 5)}
+              datastreams={datastreams}
               observations={chartObservations}
               isLoading={isLoadingChart}
             />
@@ -365,20 +359,26 @@ export function SensorDetailSheet({
 
           {/* Datastream Chart */}
           <DatastreamChart
-            datastreams={datastreams.slice(0, 5)}
+            datastreams={datastreams}
             observations={chartObservations}
             isLoading={isLoadingChart}
             selectedStartDate={observationStartDate ? new Date(observationStartDate) : undefined}
             selectedEndDate={observationEndDate ? new Date(observationEndDate) : undefined}
           />
 
-          {/* Datastreams */}
+          {/* Available Datastreams */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
                 Available Datastreams
+                <Badge variant="secondary" className="ml-auto">
+                  {datastreams.length} total
+                </Badge>
               </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Individual sensor measurements and properties
+              </p>
             </CardHeader>
             <CardContent>
               {error && (
@@ -395,13 +395,12 @@ export function SensorDetailSheet({
                   </span>
                 </div>
               ) : datastreams.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-80 overflow-y-auto">
                   {datastreams.map((datastream) => (
                     <div
                       key={datastream.datastream_id}
                       className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                        selectedDatastream?.datastream_id ===
-                        datastream.datastream_id
+                        selectedDatastream?.datastream_id === datastream.datastream_id
                           ? "border-primary bg-primary/5"
                           : "border-border"
                       }`}
@@ -416,8 +415,13 @@ export function SensorDetailSheet({
                             <Badge variant="outline" className="text-xs">
                               ID: {datastream.datastream_id}
                             </Badge>
+                            {datastream.unit_symbol && (
+                              <Badge variant="secondary" className="text-xs">
+                                {datastream.unit_symbol}
+                              </Badge>
+                            )}
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground mb-2">
                             {datastream.description}
                           </p>
                         </div>
@@ -494,6 +498,7 @@ export function SensorDetailSheet({
               </CardContent>
             </Card>
           )}
+
         </div>
       </SheetContent>
     </Sheet>

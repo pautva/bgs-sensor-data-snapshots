@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Datastream, Observation } from '@/types/bgs-sensor';
 import { formatSensorValue, processObservationValues } from '@/lib/bgs-api';
+import { getPropertyName } from '@/lib/chart-utils';
 import { TrendingUp, TrendingDown, Minus, BarChart3, Loader2 } from 'lucide-react';
 
 interface DatastreamSummaryProps {
@@ -72,40 +73,6 @@ export function DatastreamSummary({ datastreams, observations, isLoading = false
     return stats;
   }, [datastreams, observations]);
 
-  // Extract measurement type from datastream name
-  const getPropertyName = (datastreamName: string) => {
-    const nameLower = datastreamName.toLowerCase();
-    
-    // Handle gas measurements with sensor prefix (e.g., "GGS05_01 Carbon Dioxide")
-    if (nameLower.includes('carbon dioxide') || nameLower.includes('co2')) return 'Carbon Dioxide';
-    if (nameLower.includes('methane') || nameLower.includes('ch4')) return 'Methane';
-    if (nameLower.includes('oxygen') || nameLower.includes('o2')) return 'Oxygen';
-    if (nameLower.includes('hydrogen sulfide') || nameLower.includes('h2s')) return 'Hydrogen Sulfide';
-    if (nameLower.includes('nitrogen') || nameLower.includes('n2')) return 'Nitrogen';
-    
-    // Common environmental measurements
-    if (nameLower.includes('temperature')) return 'Temperature';
-    if (nameLower.includes('conductivity')) return 'Conductivity';
-    if (nameLower.includes('pressure')) return 'Pressure';
-    if (nameLower.includes('humidity')) return 'Humidity';
-    if (nameLower.includes('salinity')) return 'Salinity';
-    if (nameLower.includes('tds')) return 'TDS';
-    if (nameLower.includes('wind speed')) return 'Wind Speed';
-    if (nameLower.includes('wind direction')) return 'Wind Direction';
-    if (nameLower.includes('water level')) return 'Water Level';
-    if (nameLower.includes('ph')) return 'pH';
-    if (nameLower.includes('dissolved oxygen')) return 'Dissolved Oxygen';
-    
-    // For sensor prefix patterns like "GGS05_01 SomeProperty", extract the property part
-    const words = datastreamName.split(' ');
-    if (words.length > 1 && words[0].match(/^[A-Z]{2,3}\d+_\d+$/)) {
-      // If first word is sensor ID pattern, return the rest
-      return words.slice(1).join(' ');
-    }
-    
-    // Fallback: take the longest meaningful word or first word
-    return words.find(word => word.length > 2) || words[0] || 'Measurement';
-  };
 
   if (!datastreams.length) {
     return null;

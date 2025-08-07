@@ -1,7 +1,6 @@
 "use client";
 
-import { FROST_API_BASE } from "@/lib/api-config";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,13 +12,13 @@ import { MiniMap } from "@/components/ui/mini-map";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sensor, Datastream, Observation, Location } from "@/types/bgs-sensor";
 import {
+  getSensorById,
   getSensorDatastreams,
   getDatastreamObservations,
   getDatastreamDateRange,
   listLocations,
 } from "@/lib/bgs-api";
 import { findMatchingLocation } from "@/lib/location-utils";
-import { calculateObservationLimit } from "@/lib/chart-utils";
 import { formatDateForDisplay } from "@/lib/date-utils";
 import {
   Activity,
@@ -33,38 +32,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-// Helper function to fetch sensor details from FROST API
-async function getSensorDetails(sensorId: string): Promise<Sensor | null> {
-  try {
-    const response = await fetch(
-      `${FROST_API_BASE}/Things(${sensorId})?$expand=Locations`
-    );
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch sensor: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Transform FROST API response to our Sensor interface
-    const sensor: Sensor = {
-      id: data["@iot.id"],
-      name: data.name,
-      description: data.description,
-      category: data.properties?.category || "Unknown",
-      metadata_url: data.properties?.metadataUrl || "",
-      total_datastreams: 0, // Will be updated when we fetch datastreams
-      published: true,
-      measurement_capabilities: [], // Will be populated from datastreams
-      deployment_locations: data.Locations?.map((loc: any) => loc.name) || [],
-    };
-    
-    return sensor;
-  } catch (error) {
-    console.error("Error fetching sensor details:", error);
-    return null;
-  }
-}
 
 export default function SensorPage() {
   const params = useParams();
@@ -77,26 +44,22 @@ export default function SensorPage() {
   >({});
   const [sensorLocation, setSensorLocation] = useState<Location | null>(null);
   
-  // Date range selection state
-  const [selectedStartDate, setSelectedStartDate] = useState<Date | undefined>(undefined);
-  const [selectedEndDate, setSelectedEndDate] = useState<Date | undefined>(undefined);
-  const [availableStartDate, setAvailableStartDate] = useState<Date | undefined>(undefined);
-  const [availableEndDate, setAvailableEndDate] = useState<Date | undefined>(undefined);
+  // Date range state - simplified
+  const [selectedStartDate, setSelectedStartDate] = useState<Date>();
+  const [selectedEndDate, setSelectedEndDate] = useState<Date>();
+  const [availableStartDate, setAvailableStartDate] = useState<Date>();
+  const [availableEndDate, setAvailableEndDate] = useState<Date>();
   const [isLoadingDateRange, setIsLoadingDateRange] = useState(false);
-  const [totalObservations, setTotalObservations] = useState(0);
-  const [observationLimit, setObservationLimit] = useState(50);
-  const [isDataLimited, setIsDataLimited] = useState(false);
   
   const [isLoadingSensor, setIsLoadingSensor] = useState(true);
   const [isLoadingDatastreams, setIsLoadingDatastreams] = useState(false);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset to default date range
+  // Reset to default view (500 latest readings)
   const handleReset = () => {
-    setSelectedStartDate(undefined);
-    setSelectedEndDate(undefined);
-    // The useEffect will automatically recalculate default dates
+    setSelectedStartDate(availableStartDate);
+    setSelectedEndDate(availableEndDate);
   };
 
   // Fetch sensor details on component mount
@@ -108,13 +71,13 @@ export default function SensorPage() {
         setIsLoadingSensor(true);
         setError(null);
         
-        const sensorData = await getSensorDetails(sensorId);
-        if (!sensorData) {
-          setError("Sensor not found");
+        const response = await getSensorById(sensorId);
+        if (!response.success) {
+          setError(response.error || "Sensor not found");
           return;
         }
         
-        setSensor(sensorData);
+        setSensor(response.data.sensor);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load sensor");
       } finally {
@@ -187,21 +150,10 @@ export default function SensorPage() {
           setAvailableStartDate(startDate);
           setAvailableEndDate(endDate);
           
-          // Set default selected dates if not already set
-          if (!selectedStartDate || !selectedEndDate) {
-            // Default to last 14 days from the end date, or available range if shorter
-            const fourteenDaysFromEnd = new Date(endDate);
-            fourteenDaysFromEnd.setDate(fourteenDaysFromEnd.getDate() - 14);
-            
-            // Ensure the calculated start date isn't before the available start date
-            const defaultStartDate = fourteenDaysFromEnd < startDate ? startDate : fourteenDaysFromEnd;
-            
-            if (!selectedStartDate) {
-              setSelectedStartDate(defaultStartDate);
-            }
-            if (!selectedEndDate) {
-              setSelectedEndDate(endDate);
-            }
+          // Initialize with full range for 500 latest readings default view
+          if (!selectedStartDate && !selectedEndDate) {
+            setSelectedStartDate(startDate);
+            setSelectedEndDate(endDate);
           }
         }
       } catch (err) {
@@ -213,6 +165,12 @@ export default function SensorPage() {
 
     fetchDateRange();
   }, [datastreams]);
+
+  // Memoize datastream IDs to prevent unnecessary re-renders
+  const datastreamIds = useMemo(() => 
+    datastreams.map(d => d.datastream_id).join(','), 
+    [datastreams]
+  );
 
   // Fetch chart observations for datastreams
   useEffect(() => {
@@ -230,22 +188,19 @@ export default function SensorPage() {
       try {
         setIsLoadingChart(true);
         
-        // Calculate appropriate limit using centralized utility
-        const daysDiff = selectedStartDate && selectedEndDate 
-          ? Math.ceil((selectedEndDate.getTime() - selectedStartDate.getTime()) / (1000 * 60 * 60 * 24))
-          : 1;
-          
-        // Convert selected dates to strings for API call
-        // Use local date string to avoid timezone issues
-        const startDateStr = selectedStartDate ? formatDateForDisplay(selectedStartDate) : undefined;
-        const endDateStr = selectedEndDate ? formatDateForDisplay(selectedEndDate) : undefined;
-        const limit = calculateObservationLimit(daysDiff);
-        setObservationLimit(limit);
+        // Determine if showing default view (500 latest) or custom date range
+        const isDefaultView = selectedStartDate && selectedEndDate && 
+          selectedStartDate.getTime() === availableStartDate?.getTime() && 
+          selectedEndDate.getTime() === availableEndDate?.getTime();
         
-        // Only process first 5 datastreams to match chart display
-        const observationsPromises = datastreams
-          .slice(0, 5)
-          .map(async (datastream) => {
+        // API parameters: no dates for default view, specific dates for custom range
+        const startDateStr = isDefaultView ? undefined : selectedStartDate ? formatDateForDisplay(selectedStartDate) : undefined;
+        const endDateStr = isDefaultView ? undefined : selectedEndDate ? formatDateForDisplay(selectedEndDate) : undefined;
+        const limit = isDefaultView ? 250 : 1000;
+        
+        // Fetch observations for all datastreams in parallel
+        const results = await Promise.all(
+          datastreams.map(async (datastream) => {
             const response = await getDatastreamObservations(
               datastream.datastream_id,
               limit,
@@ -255,30 +210,42 @@ export default function SensorPage() {
             return {
               datastreamId: datastream.datastream_id,
               observations: response.success ? response.data.observations : [],
-              isLimited: response.success ? response.data.isLimited : false,
             };
-          });
+          })
+        );
 
-        const results = await Promise.all(observationsPromises);
+        // Build chart data structure
         const chartData: Record<number, Observation[]> = {};
         let totalObs = 0;
-        let isLimited = false;
-
-        results.forEach(({ datastreamId, observations, isLimited: datastreamLimited }) => {
+        
+        results.forEach(({ datastreamId, observations }) => {
           chartData[datastreamId] = observations;
           totalObs += observations.length;
-          // Use the accurate information from the API
-          if (datastreamLimited) {
-            isLimited = true;
-          }
         });
 
         setChartObservations(chartData);
-        setTotalObservations(totalObs);
-        // Store whether any datastream was actually limited
-        setIsDataLimited(isLimited);
 
-        // Note: We don't need to extract observation date range since we already have selected dates
+        // When in default view, update date inputs to reflect actual data range
+        if (isDefaultView && totalObs > 0) {
+          // Extract actual date range from the fetched observations
+          const allObservations = Object.values(chartData).flat();
+          if (allObservations.length > 0) {
+            const validDates = allObservations
+              .map(obs => new Date(obs.phenomenon_time))
+              .filter(date => !isNaN(date.getTime())); // Filter out invalid dates
+            
+            if (validDates.length > 0) {
+              const actualStartDate = new Date(Math.min(...validDates.map(d => d.getTime())));
+              const actualEndDate = new Date(Math.max(...validDates.map(d => d.getTime())));
+              
+              // Only update if we have valid dates
+              if (!isNaN(actualStartDate.getTime()) && !isNaN(actualEndDate.getTime())) {
+                setSelectedStartDate(actualStartDate);
+                setSelectedEndDate(actualEndDate);
+              }
+            }
+          }
+        }
       } catch (err) {
         console.error("Error fetching chart data:", err);
       } finally {
@@ -287,7 +254,7 @@ export default function SensorPage() {
     };
 
     fetchChartData();
-  }, [datastreams.map(d => d.datastream_id).join(','), selectedStartDate, selectedEndDate]);
+  }, [datastreamIds, selectedStartDate, selectedEndDate, availableStartDate, availableEndDate]);
 
 
   if (isLoadingSensor) {
@@ -411,7 +378,7 @@ export default function SensorPage() {
                       Datastreams
                     </h4>
                     <Badge variant="secondary">
-                      {Object.keys(chartObservations).length || datastreams.length} active
+                      {datastreams.length} active
                     </Badge>
                   </div>
 
@@ -526,7 +493,7 @@ export default function SensorPage() {
             <div className="flex-shrink-0">
               {datastreams.length > 0 && (
                 <DatastreamSummary
-                  datastreams={datastreams.slice(0, 5)}
+                  datastreams={datastreams}
                   observations={chartObservations}
                   isLoading={isLoadingChart}
                   className="h-full"
@@ -537,15 +504,12 @@ export default function SensorPage() {
             {/* Chart Section - Takes remaining space */}
             <div className="flex-1 min-h-0">
               <DatastreamChart
-                datastreams={datastreams.slice(0, 5)}
+                datastreams={datastreams}
                 observations={chartObservations}
                 isLoading={isLoadingChart}
                 className="h-full"
                 selectedStartDate={selectedStartDate}
                 selectedEndDate={selectedEndDate}
-                totalObservations={totalObservations}
-                observationLimit={observationLimit}
-                isDataLimited={isDataLimited}
               />
             </div>
           </div>
