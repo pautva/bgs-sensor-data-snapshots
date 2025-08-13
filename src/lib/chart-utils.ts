@@ -24,7 +24,11 @@ export function getPropertyName(datastreamName: string): string {
   if (nameLower.includes('ph')) return 'pH';
   if (nameLower.includes('wind speed')) return 'Wind Speed';
   if (nameLower.includes('wind direction')) return 'Wind Direction';
-  if (nameLower.includes('water level')) return 'Water Level';
+  if (nameLower.includes('water level')) {
+    // Preserve parenthetical information for water level types (linear, polynomial, etc.)
+    const parenthesisMatch = datastreamName.match(/\([^)]+\)/);
+    return parenthesisMatch ? `Water Level ${parenthesisMatch[0]}` : 'Water Level';
+  }
   if (nameLower.includes('dissolved oxygen')) return 'Dissolved Oxygen';
   
   // Extract property from sensor prefix patterns (e.g., "GGS05_01 Temperature" -> "Temperature")

@@ -226,6 +226,7 @@ export function DatastreamChart({
             onPressedChange={setIsNormalized}
             size="sm"
             variant="outline"
+            className="cursor-pointer"
           >
             <BarChart3 className="h-4 w-4 mr-1" />
             {isNormalized ? 'Normalised' : 'Raw'}

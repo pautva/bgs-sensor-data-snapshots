@@ -76,7 +76,7 @@ export function MiniMap({ latitude, longitude, className = "" }: MiniMapProps) {
           // Create map instance
           const map = L.default.map(mapRef.current, {
             center: [latitude, longitude],
-            zoom: 13,
+            zoom: 16,
             zoomControl: true,
             scrollWheelZoom: true,
             doubleClickZoom: true,

@@ -20,6 +20,7 @@ import {
   getDatastreamObservations,
   formatSensorValue,
   listLocations,
+  filterNonEventDatastreams,
 } from "@/lib/bgs-api";
 import { extractObservationDateRange } from "@/lib/date-utils";
 import { findMatchingLocation } from "@/lib/location-utils";
@@ -79,7 +80,8 @@ export function SensorDetailSheet({
         const response = await getSensorDatastreams(sensor.id);
 
         if (response.success) {
-          setDatastreams(response.data.datastreams);
+          const filteredDatastreams = filterNonEventDatastreams(response.data.datastreams);
+          setDatastreams(filteredDatastreams);
         } else {
           setError(response.error || "Failed to load datastreams");
         }
@@ -246,7 +248,7 @@ export function SensorDetailSheet({
                 Sensor Overview
                 <div className="ml-auto flex items-center gap-2">
                   <Badge variant="outline" className="text-xs">
-                    Borehole Reference: {sensor.name.match(/[A-Z]{2,3}\d{2,3}/)?.[0] || 'N/A'}
+                    Borehole Reference: {sensor.name.match(/[A-Z]{2,3}\d{2,4}/)?.[0] || 'N/A'}
                   </Badge>
                   <Badge variant="secondary">
                     {datastreams.length} active datastreams

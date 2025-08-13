@@ -17,6 +17,7 @@ import {
   getDatastreamObservations,
   getDatastreamDateRange,
   listLocations,
+  filterNonEventDatastreams,
 } from "@/lib/bgs-api";
 import { findMatchingLocation } from "@/lib/location-utils";
 import { formatDateForDisplay } from "@/lib/date-utils";
@@ -98,7 +99,8 @@ export default function SensorPage() {
         const response = await getSensorDatastreams(sensor.id);
 
         if (response.success) {
-          setDatastreams(response.data.datastreams);
+          const filteredDatastreams = filterNonEventDatastreams(response.data.datastreams);
+          setDatastreams(filteredDatastreams);
           // Don't update sensor state here - it causes infinite loop
           // The datastream count will be shown from the datastreams array length
         } else {
@@ -387,7 +389,7 @@ export default function SensorPage() {
                       Borehole Reference
                     </h4>
                     <Badge variant="outline">
-                      {sensor.name.match(/[A-Z]{2,3}\d{2,3}/)?.[0] || 'N/A'}
+                      {sensor.name.match(/[A-Z]{2,3}\d{2,4}/)?.[0] || 'N/A'}
                     </Badge>
                   </div>
 

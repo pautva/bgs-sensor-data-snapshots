@@ -61,6 +61,18 @@ export function processObservationValues(observations: Observation[]): number[] 
     .filter((val): val is number => val !== null);
 }
 
+/**
+ * Filter out Event datastreams from visualization
+ * Event datastreams don't contain measurement data and are not needed for charts
+ * @param datastreams - Array of datastream objects
+ * @returns Array of datastreams excluding Event datastreams
+ */
+export function filterNonEventDatastreams(datastreams: Datastream[]): Datastream[] {
+  return datastreams.filter(datastream => 
+    !datastream.name.toLowerCase().includes('event')
+  );
+}
+
 // Helper function to make FROST API calls
 async function frostApiCall(endpoint: string): Promise<any> {
   try {
