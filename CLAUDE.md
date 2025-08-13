@@ -68,11 +68,13 @@ src/
 - **500 Latest Readings** - Default view shows most recent sensor data
 - **Custom Date Ranges** - Up to 1000 readings for specific time periods
 - **Location & Maps** - GPS coordinates with Leaflet integration
+- **Depth Information** - Z-coordinate display showing sensor depth/elevation with coordinate reference system
 - **Detail Sheets** - Sidebar with:
   - Chart visualization
   - Summary statistics
   - **Clickable datastream list** - Select to see latest 10 observations
   - Borehole reference extraction
+  - Prominent depth badge in Sensor Overview section
 
 ## Data Integration
 
@@ -135,6 +137,7 @@ src/
   - Vibrating Wire Pressure vs regular Pressure
 - **Improved Map Zoom** - Sensor location maps show closer detail (zoom level 16+)
 - **UI Polish** - Cursor pointer on interactive elements for better UX
+- **Depth/Z-Coordinate Integration** - Sensor depth information extracted from location properties and prominently displayed
 
 ### Chart System Optimization
 - **500 Latest Readings Default** - Fast loading with most relevant recent data
@@ -148,6 +151,14 @@ src/
 - `filterNonEventDatastreams()` - Removes information-only datastreams from charts
 - `getPropertyName()` - Intelligent datastream name parsing with qualifier preservation
 - Scientific validation functions ensure data integrity for research accuracy
+
+### Location & Depth Enhancement (August 2025)
+- **Z-Coordinate Support** - Location interface includes optional `z` (depth) and `z_crs` (coordinate reference system) fields
+- **API Integration** - Depth data automatically extracted from FROST API location properties during existing API calls
+- **No Performance Impact** - Uses existing API responses, no additional HTTP requests required
+- **Prominent Display** - Depth shown as badge in Sensor Overview section for high visibility
+- **Smart Formatting** - Displays as "Depth: -6.888m maOD" with proper units and reference system
+- **Responsive Design** - Consistent badge styling across both detail sheet and full sensor page views
 
 ### Production Deployment
 - GitLab CI/CD pipeline with automated deployment

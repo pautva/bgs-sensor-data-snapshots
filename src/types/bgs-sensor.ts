@@ -38,6 +38,8 @@ export interface Location {
   description: string;
   latitude: number;
   longitude: number;
+  z?: number; // Depth/elevation coordinate
+  z_crs?: string; // Coordinate reference system for z (e.g., "maOD")
   site: SensorSite;
   sub_site: string;
   active: boolean;

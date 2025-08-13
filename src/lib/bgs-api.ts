@@ -282,6 +282,8 @@ export async function listLocations(): Promise<BGSApiResponse<ListLocationsRespo
         description: loc.description || 'No description available',
         latitude,
         longitude,
+        z: loc.properties?.z || undefined, // Depth/elevation coordinate
+        z_crs: loc.properties?.z_crs || undefined, // Coordinate reference system
         site,
         sub_site: loc.description || 'Main Site',
         active: true, // Assume active if in the API

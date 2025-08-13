@@ -247,6 +247,11 @@ export function SensorDetailSheet({
                 <Database className="h-4 w-4" />
                 Sensor Overview
                 <div className="ml-auto flex items-center gap-2">
+                  {sensorLocation && typeof sensorLocation.z === 'number' && (
+                    <Badge variant="outline" className="text-xs">
+                      Depth: {sensorLocation.z}m {sensorLocation.z_crs || 'relative'}
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="text-xs">
                     Borehole Reference: {sensor.name.match(/[A-Z]{2,3}\d{2,4}/)?.[0] || 'N/A'}
                   </Badge>

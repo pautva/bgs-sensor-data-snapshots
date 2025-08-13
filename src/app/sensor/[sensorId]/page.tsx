@@ -439,6 +439,11 @@ export default function SensorPage() {
                 <CardTitle className="text-lg flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   Location
+                  {sensorLocation && typeof sensorLocation.z === 'number' && (
+                    <Badge variant="outline" className="text-xs ml-auto">
+                      Depth: {sensorLocation.z}m {sensorLocation.z_crs || 'relative'}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">
