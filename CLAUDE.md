@@ -128,13 +128,26 @@ src/
 
 ## Recent Updates
 
-### Chart System Optimization (August 2025)
+### Data Quality Improvements (August 2025)
+- **Event Datastream Filtering** - Non-measurement datastreams excluded from visualizations
+- **Enhanced Property Names** - Preserves important qualifiers:
+  - Water Level (linear) vs Water Level (polynomial) 
+  - Vibrating Wire Pressure vs regular Pressure
+- **Improved Map Zoom** - Sensor location maps show closer detail (zoom level 16+)
+- **UI Polish** - Cursor pointer on interactive elements for better UX
+
+### Chart System Optimization
 - **500 Latest Readings Default** - Fast loading with most relevant recent data
 - **Dynamic Date Inputs** - Automatically reflect actual data range shown
 - **Enhanced Time Display** - X-axis shows time + date based on data span
 - **Optimized Chart Performance** - Single-pass data processing with validation
 - **Simplified API Logic** - 500 for default view, 1000 for custom ranges
 - **Error Handling** - Robust date validation prevents chart failures
+
+### Data Processing Functions
+- `filterNonEventDatastreams()` - Removes information-only datastreams from charts
+- `getPropertyName()` - Intelligent datastream name parsing with qualifier preservation
+- Scientific validation functions ensure data integrity for research accuracy
 
 ### Production Deployment
 - GitLab CI/CD pipeline with automated deployment

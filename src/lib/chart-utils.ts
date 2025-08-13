@@ -17,7 +17,20 @@ export function getPropertyName(datastreamName: string): string {
   // Environmental measurements
   if (nameLower.includes('temperature')) return 'Temperature';
   if (nameLower.includes('conductivity')) return 'Conductivity';
-  if (nameLower.includes('pressure')) return 'Pressure';
+  if (nameLower.includes('pressure')) {
+    // Preserve important qualifiers for pressure measurements
+    const qualifiers = ['vibrating wire', 'atmospheric', 'barometric', 'hydrostatic'];
+    const matchedQualifier = qualifiers.find(qualifier => nameLower.includes(qualifier));
+    if (matchedQualifier) {
+      // Capitalize properly: "vibrating wire" → "Vibrating Wire"
+      const capitalized = matchedQualifier
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      return `${capitalized} Pressure`;
+    }
+    return 'Pressure';
+  }
   if (nameLower.includes('humidity')) return 'Humidity';
   if (nameLower.includes('salinity')) return 'Salinity';
   if (nameLower.includes('tds')) return 'TDS';
